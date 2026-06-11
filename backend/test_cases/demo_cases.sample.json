@@ -1,0 +1,17 @@
+[
+  {
+    "name": "fried-rice-demo",
+    "image_path": "images/fried-rice.jpg",
+    "expected_any_of": ["炒飯", "fried rice"]
+  },
+  {
+    "name": "pizza-demo",
+    "image_path": "images/pizza.jpg",
+    "expected_any_of": ["披薩", "pizza"]
+  },
+  {
+    "name": "dumpling-demo",
+    "image_path": "images/dumpling.jpg",
+    "expected_any_of": ["餃子", "dumpling", "gyoza"]
+  }
+]

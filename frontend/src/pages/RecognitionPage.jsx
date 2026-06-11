@@ -9,6 +9,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   addJournalEntry,
   listTodayJournalEntries,
+  normalizeNutrition,
   removeJournalEntry,
   summarizeTodayJournal,
 } from "../utils/memberJournal";
@@ -34,7 +35,7 @@ function buildManualResult(manualLookup) {
   return {
     food_name: manualLookup.foodName,
     portion_label: manualLookup.portionLabel,
-    nutrition: manualLookup.nutrition,
+    nutrition: normalizeNutrition(manualLookup),
     image_preview: "",
     source: "manual_lookup",
     recorded_at: manualLookup.recordedAt,
@@ -58,12 +59,11 @@ function buildAiResult(result, previewUrl) {
   return {
     food_name: combinedName,
     portion_label: portionLabel,
-    nutrition: {
-      calories: Number(result.total_calories || 0),
-      protein: Number(result.total_nutrition?.protein || 0),
-      fat: Number(result.total_nutrition?.fat || 0),
-      carbs: Number(result.total_nutrition?.carbs || 0),
-    },
+    nutrition: normalizeNutrition({
+      ...result,
+      nutrition: result.total_nutrition,
+      total_calories: result.total_calories,
+    }),
     image_preview: result.image_preview || previewUrl,
     source: result.analysis_mode || "ai",
     history_record_id: result.history_record_id || null,

@@ -99,7 +99,7 @@ class JournalService:
             "history_record_id": cls._normalize_history_record_id(
                 patch.get("history_record_id", existing.get("history_record_id"))
             ),
-            "nutrition": cls._normalize_nutrition(patch.get("nutrition", existing.get("nutrition", {}))),
+            "nutrition": cls._normalize_nutrition({**existing, **patch}),
         }
         updated["food_name"] = str(updated.get("food_name", "")).strip() or "未命名餐點"
         updated["portion_label"] = str(updated.get("portion_label", "")).strip() or "1 份"
@@ -224,7 +224,7 @@ class JournalService:
             "created_at": timestamp.isoformat(),
             "date_key": cls._date_key(timestamp),
             "history_record_id": cls._normalize_history_record_id(payload.get("history_record_id")),
-            "nutrition": cls._normalize_nutrition(payload.get("nutrition", {})),
+            "nutrition": cls._normalize_nutrition(payload),
         }
 
     @staticmethod
@@ -250,11 +250,39 @@ class JournalService:
     @staticmethod
     def _normalize_nutrition(nutrition: dict[str, Any] | None) -> dict[str, float]:
         data = nutrition if isinstance(nutrition, dict) else {}
+        nested = data.get("nutrition") if isinstance(data.get("nutrition"), dict) else {}
+        total = data.get("total_nutrition") if isinstance(data.get("total_nutrition"), dict) else {}
+
+        def coerce_float(value: Any) -> float:
+            if isinstance(value, str):
+                normalized = value.replace(",", "").strip()
+                number = ""
+                for char in normalized:
+                    if char.isdigit() or char in ".-":
+                        number += char
+                    elif number:
+                        break
+                value = number
+            return float(value or 0)
+
+        def number_for(aliases: tuple[str, ...]) -> float:
+            for source in (nested, total, data):
+                for key, value in source.items():
+                    if str(key).strip().lower() not in aliases:
+                        continue
+                    try:
+                        return coerce_float(value or 0)
+                    except (TypeError, ValueError):
+                        return 0.0
+            return 0.0
+
         return {
-            "calories": float(data.get("calories") or 0),
-            "protein": float(data.get("protein") or 0),
-            "fat": float(data.get("fat") or 0),
-            "carbs": float(data.get("carbs") or 0),
+            "calories": number_for(("calories", "calorie", "kcal", "heat", "熱量", "total_calories")),
+            "protein": number_for(("protein", "protein_g", "proteins", "蛋白質")),
+            "fat": number_for(("fat", "fat_g", "fats", "脂肪")),
+            "carbs": number_for(
+                ("carbs", "carb", "carbs_g", "carbohydrate", "carbohydrates", "carbohydrate_g", "碳水", "碳水化合物")
+            ),
         }
 
     @staticmethod

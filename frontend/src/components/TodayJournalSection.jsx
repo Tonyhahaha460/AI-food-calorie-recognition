@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
+import { normalizeNutrition } from "../utils/memberJournal";
 
 const COPY = {
   eyebrow: "今日日誌",
   title: "加入今日已攝取的餐點",
   totalCalories: "今日總熱量",
-  totalCount: "今日筆數",
+  totalCount: "今日紀錄數",
   add: "加入今日日誌",
   loginToAdd: "先登入會員再加入日誌",
   needEntry: "請先準備一筆要加入的餐點",
@@ -34,6 +35,12 @@ function formatTime(value) {
     minute: "2-digit",
     hour12: false,
   });
+}
+
+function formatAmount(value, unit) {
+  const numeric = Number(value || 0);
+  const rounded = unit === "千卡" ? Math.round(numeric) : Math.round(numeric * 10) / 10;
+  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}${unit}`;
 }
 
 function TodayJournalSection({
@@ -88,7 +95,7 @@ function TodayJournalSection({
       <div className="today-journal-summary">
         <div className="journal-summary-metric">
           <span>{COPY.totalCalories}</span>
-          <strong>{summary.calories || 0} kcal</strong>
+          <strong>{formatAmount(summary.calories, "千卡")}</strong>
         </div>
         <div className="journal-summary-metric">
           <span>{COPY.totalCount}</span>
@@ -131,10 +138,17 @@ function TodayJournalSection({
               <p>{currentEntry.portion_label}</p>
             </div>
             <div className="today-journal-pending-macros">
-              <span>熱量 {currentEntry.nutrition.calories} kcal</span>
-              <span>蛋白質 {currentEntry.nutrition.protein} g</span>
-              <span>脂肪 {currentEntry.nutrition.fat} g</span>
-              <span>碳水 {currentEntry.nutrition.carbs} g</span>
+              {(() => {
+                const nutrition = normalizeNutrition(currentEntry);
+                return (
+                  <>
+                    <span>熱量 {formatAmount(nutrition.calories, "千卡")}</span>
+                    <span>蛋白質 {formatAmount(nutrition.protein, "克")}</span>
+                    <span>脂肪 {formatAmount(nutrition.fat, "克")}</span>
+                    <span>碳水 {formatAmount(nutrition.carbs, "克")}</span>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -169,7 +183,7 @@ function TodayJournalSection({
                 <strong>{entry.food_name}</strong>
                 <span>{entry.portion_label}</span>
                 <small>
-                  {entry.nutrition.calories} kcal · {formatTime(entry.created_at)}
+                  {formatAmount(normalizeNutrition(entry).calories, "千卡")} · {formatTime(entry.created_at)}
                 </small>
                 <button
                   type="button"

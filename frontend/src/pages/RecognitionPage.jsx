@@ -16,14 +16,14 @@ import {
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
 const COPY = {
-  loadFoodProfilesFailed: "載入食物資料庫失敗，請稍後再試。",
+  loadFoodProfilesFailed: "無法載入食物資料庫，請稍後再試。",
   invalidImageType: "請上傳 JPG 或 PNG 圖片。",
-  fileTooLarge: "圖片大小請控制在 4 MB 以內。",
+  fileTooLarge: "圖片太大，請選擇 4 MB 以內的檔案。",
   fileRequired: "請先選擇一張餐點圖片。",
-  loginPrompt: "請先登入會員，才能把結果加入今日日誌。",
-  missingEntry: "目前沒有可加入日誌的餐點，請先完成 AI 分析或手動輸入。",
-  addJournalFailed: "加入今日日誌失敗，請稍後再試。",
-  removeJournalFailed: "刪除今日日誌失敗，請稍後再試。",
+  loginPrompt: "請先登入會員，才能加入今日飲食紀錄。",
+  missingEntry: "目前沒有可加入紀錄的餐點，請先完成 AI 分析或手動查詢。",
+  addJournalFailed: "加入今日飲食紀錄失敗，請稍後再試。",
+  removeJournalFailed: "刪除今日飲食紀錄失敗，請稍後再試。",
 };
 
 function buildManualResult(manualLookup) {
@@ -53,7 +53,7 @@ function buildAiResult(result, previewUrl) {
       : result.items.map((item) => item.food_name).join(" + ");
 
   const portionLabel =
-    result.items.length === 1 ? result.items[0].estimated_portion : `${result.items.length} 項`;
+    result.items.length === 1 ? result.items[0].estimated_portion : `${result.items.length} 個項目`;
 
   return {
     food_name: combinedName,
@@ -344,15 +344,38 @@ function RecognitionPage() {
 
   return (
     <Layout>
-      <section className="page-header">
-        <p className="eyebrow">圖片分析</p>
-        <h1>上傳照片交給 AI 估算，也能用手動查詢直接加入飲食日誌。</h1>
-        <p className="subtitle">
-          左側可以先上傳餐點圖片進行分析；如果 AI 暫時沒有辨識準，底下也能直接輸入食物名稱、用關鍵字搜尋並切換份量，快速查出熱量與營養。
-        </p>
+      <section className="page-header recognition-hero">
+        <div>
+          <p className="eyebrow">AI 食物辨識</p>
+          <h1>拍下餐點，自動估算熱量與營養</h1>
+          <p className="subtitle">
+            上傳餐點照片後，系統會辨識食物、估算熱量與蛋白質、脂肪、碳水。若辨識不準，也可以直接用食物資料庫手動修正。
+          </p>
+          <div className="quest-steps" aria-label="任務流程">
+            <span>01 上傳照片</span>
+            <span>02 AI 掃描</span>
+            <span>03 校正結果</span>
+            <span>04 加入日誌</span>
+          </div>
+        </div>
+        <div className="recognition-hero-metrics" aria-label="功能摘要">
+          <div>
+            <span>模式</span>
+            <strong>AI + 手動校正</strong>
+          </div>
+          <div>
+            <span>資料</span>
+            <strong>熱量 / 三大營養素</strong>
+          </div>
+          <div className="threat-meter">
+            <span>辨識穩定度</span>
+            <strong>ACTIVE</strong>
+            <i aria-hidden="true" />
+          </div>
+        </div>
       </section>
 
-      <div className="workspace-grid">
+      <div className="workspace-grid recognition-workspace">
         <UploadPanel
           previewUrl={previewUrl}
           selectedFile={selectedFile}

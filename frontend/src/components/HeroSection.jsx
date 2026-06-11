@@ -2,33 +2,31 @@ import { Link } from "react-router-dom";
 
 function HeroSection() {
   return (
-    <section className="hero-card meal-hero">
+    <section className="hero-card meal-hero game-hero">
       <div className="hero-copy">
-        <p className="eyebrow">AI Meal Scanner</p>
-        <h1>拍照分析餐點，快速查看卡路里與營養組成</h1>
+        <p className="eyebrow">Nutrition RPG System</p>
+        <h1>把每餐變成一場營養任務</h1>
         <p className="subtitle">
-          AI Meal Scanner and Nutrition Analysis Web App 是一個適合大學專題展示的
-          React + Flask 網站。使用者可上傳或拍攝食物照片，系統會模擬辨識多項食物、
-          估計份量，並回傳總熱量與營養分析結果。
+          上傳餐點照片，AI 會辨識食物並轉換成熱量、蛋白質、脂肪與碳水數值。辨識失準時也能手動校正，讓你的每日飲食像角色狀態一樣清楚。
         </p>
         <div className="hero-actions">
           <Link to="/recognition" className="primary-button">
-            開始分析
+            開始掃描
           </Link>
-          <Link to="/admin" className="secondary-button">
-            編輯食物資料
+          <Link to="/journal" className="secondary-button">
+            查看日誌
           </Link>
         </div>
       </div>
 
       <div className="hero-preview-stack">
-        <div className="preview-note">
-          <span>多項分析輸出</span>
-          <strong>白飯 + 煎蛋 + 沙拉</strong>
+        <div className="preview-note game-status-card">
+          <span>今日任務</span>
+          <strong>掃描餐點並補滿營養條</strong>
         </div>
-        <div className="preview-macros">
+        <div className="preview-macros game-stat-grid">
           <div>
-            <span>總熱量</span>
+            <span>熱量</span>
             <strong>428 kcal</strong>
           </div>
           <div>

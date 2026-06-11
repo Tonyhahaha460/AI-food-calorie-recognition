@@ -1,4 +1,5 @@
 import ManualNutritionLookup from "./ManualNutritionLookup";
+import { useState } from "react";
 
 const COPY = {
   analysis: "\u4e0a\u50b3\u5206\u6790",
@@ -27,6 +28,35 @@ function UploadPanel({
   onApplyManualLookup,
   onClearAppliedManualLookup,
 }) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  function handleDragEnter(event) {
+    event.preventDefault();
+    setIsDragging(true);
+  }
+
+  function handleDragOver(event) {
+    event.preventDefault();
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(event) {
+    event.preventDefault();
+    if (event.currentTarget === event.target) {
+      setIsDragging(false);
+    }
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    setIsDragging(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) {
+      return;
+    }
+    onFileChange({ target: { files: [file] } });
+  }
+
   return (
     <section className="panel-card">
       <div className="section-heading">
@@ -34,7 +64,13 @@ function UploadPanel({
         <h2>{COPY.title}</h2>
       </div>
 
-      <label className="upload-dropzone">
+      <label
+        className={`upload-dropzone ${isDragging ? "is-dragging" : ""}`}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <input
           type="file"
           accept=".jpg,.jpeg,.png,image/png,image/jpeg"
@@ -52,7 +88,7 @@ function UploadPanel({
       ) : null}
 
       {previewUrl ? (
-        <div className="preview-wrapper meal-preview">
+        <div className="preview-wrapper meal-preview scanner-preview">
           <img src={previewUrl} alt={COPY.previewAlt} className="preview-image" />
         </div>
       ) : (

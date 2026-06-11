@@ -18,8 +18,6 @@ import {
 } from "../utils/memberJournal";
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
-const JOURNAL_UI_VERSION = "2026-04-14.2";
-
 const dateKey = (value = new Date()) =>
   `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 
@@ -36,6 +34,14 @@ function monthTitle(value) {
 
 function remaining(value) {
   return Math.max(0, Math.round(Number(value || 0)));
+}
+
+function progressPercent(used, target) {
+  const targetValue = Number(target || 0);
+  if (targetValue <= 0) {
+    return 0;
+  }
+  return Math.min(100, Math.round((Number(used || 0) / targetValue) * 100));
 }
 
 function proteinTarget(weightKg, mode) {
@@ -183,11 +189,6 @@ function JournalPage() {
 
   const selectedEntries = useMemo(() => byDate.get(selectedDateKey) || [], [byDate, selectedDateKey]);
   const selectedSummary = useMemo(() => summarizeJournalEntries(selectedEntries), [selectedEntries]);
-  const todaySummary = useMemo(
-    () => summarizeJournalEntries(entries.filter((entry) => entry.date_key === todayKey)),
-    [entries, todayKey]
-  );
-
   const editMatches = useMemo(() => {
     const keyword = String(editForm?.foodName || "")
       .trim()
@@ -226,6 +227,10 @@ function JournalPage() {
   const leftProtein = remaining(proteinGoal - Number(selectedSummary.protein || 0));
   const leftFat = remaining(fatGoal - Number(selectedSummary.fat || 0));
   const leftCarbs = remaining(carbsGoal - Number(selectedSummary.carbs || 0));
+  const calorieProgress = progressPercent(selectedSummary.calories, calorieGoal);
+  const proteinProgress = progressPercent(selectedSummary.protein, proteinGoal);
+  const fatProgress = progressPercent(selectedSummary.fat, fatGoal);
+  const carbsProgress = progressPercent(selectedSummary.carbs, carbsGoal);
 
   const calendar = useMemo(
     () => buildCalendar(visibleMonth, counts, selectedDateKey, todayKey),
@@ -379,12 +384,12 @@ function JournalPage() {
 
         <section className="panel-card journal-summary-card">
           <div className="journal-summary-metric">
-            <span>今日總熱量</span>
-            <strong>{todaySummary.calories} kcal</strong>
+            <span>目前日期總熱量</span>
+            <strong>{selectedSummary.calories} 千卡</strong>
           </div>
           <div className="journal-summary-metric">
-            <span>今日筆數</span>
-            <strong>{todaySummary.count}</strong>
+            <span>目前日期筆數</span>
+            <strong>{selectedSummary.count}</strong>
           </div>
           <Link to="/recognition" className="primary-button">
             返回掃描頁
@@ -436,7 +441,7 @@ function JournalPage() {
           </button>
         </div>
         <div className="journal-goal-summary">
-          <div className="journal-summary-metric journal-double-metric">
+          <div className="journal-summary-metric journal-double-metric journal-progress-metric">
             <div>
               <span>今日目標熱量</span>
               <strong>{calorieGoal || "--"} 千卡</strong>
@@ -445,8 +450,14 @@ function JournalPage() {
               <span>剩餘熱量</span>
               <strong>{leftCalories} 千卡</strong>
             </div>
+            {calorieProgress > 0 ? (
+              <div className="goal-progress-track" aria-label={`熱量進度 ${calorieProgress}%`}>
+                <span style={{ width: `${calorieProgress}%` }} />
+              </div>
+            ) : null}
+            <small className="goal-progress-caption">已使用 {selectedSummary.calories || 0} 千卡</small>
           </div>
-          <div className="journal-summary-metric journal-double-metric">
+          <div className="journal-summary-metric journal-double-metric journal-progress-metric">
             <div>
               <span>今日目標蛋白質</span>
               <strong>{proteinGoal || "--"} 克</strong>
@@ -455,8 +466,14 @@ function JournalPage() {
               <span>剩餘蛋白質</span>
               <strong>{leftProtein} 克</strong>
             </div>
+            {proteinProgress > 0 ? (
+              <div className="goal-progress-track" aria-label={`蛋白質進度 ${proteinProgress}%`}>
+                <span style={{ width: `${proteinProgress}%` }} />
+              </div>
+            ) : null}
+            <small className="goal-progress-caption">已使用 {Math.round(selectedSummary.protein || 0)} 克</small>
           </div>
-          <div className="journal-summary-metric journal-double-metric">
+          <div className="journal-summary-metric journal-double-metric journal-progress-metric">
             <div>
               <span>今日目標脂肪</span>
               <strong>{fatGoal || "--"} 克</strong>
@@ -465,8 +482,14 @@ function JournalPage() {
               <span>剩餘脂肪</span>
               <strong>{leftFat} 克</strong>
             </div>
+            {fatProgress > 0 ? (
+              <div className="goal-progress-track" aria-label={`脂肪進度 ${fatProgress}%`}>
+                <span style={{ width: `${fatProgress}%` }} />
+              </div>
+            ) : null}
+            <small className="goal-progress-caption">已使用 {Math.round(selectedSummary.fat || 0)} 克</small>
           </div>
-          <div className="journal-summary-metric journal-double-metric">
+          <div className="journal-summary-metric journal-double-metric journal-progress-metric">
             <div>
               <span>今日目標碳水</span>
               <strong>{carbsGoal || "--"} 克</strong>
@@ -475,13 +498,15 @@ function JournalPage() {
               <span>剩餘碳水</span>
               <strong>{leftCarbs} 克</strong>
             </div>
+            {carbsProgress > 0 ? (
+              <div className="goal-progress-track" aria-label={`碳水進度 ${carbsProgress}%`}>
+                <span style={{ width: `${carbsProgress}%` }} />
+              </div>
+            ) : null}
+            <small className="goal-progress-caption">已使用 {Math.round(selectedSummary.carbs || 0)} 克</small>
           </div>
         </div>
         <p className="muted-text">這個區會根據您目前點選的日期，扣掉當天已經加入日誌的用餐點。</p>
-        <p className="muted-text journal-goal-debug">
-          畫面版本 {JOURNAL_UI_VERSION} · 目前模式：{goalMode === "fat_loss" ? "減脂建議" : "維持體態"} · 選取日期：
-          {dateTitle(selectedDateKey)} · 已扣熱量：{selectedSummary.calories} 千卡
-        </p>
       </section>
 
       <section className="panel-card">

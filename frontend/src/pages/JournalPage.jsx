@@ -4,13 +4,17 @@ import { fetchFoodProfiles } from "../api/foodProfilesApi";
 import Layout from "../components/Layout";
 import {
   CoachHeroCard,
+  CoachHeader,
   DailyMissions,
+  EmptyState,
   ExerciseRecoveryCard,
+  FloatingCoachButton,
   GoalModeSelector,
   MacroGapAnalysis,
   NextMealSuggestion,
-  NutritionTargetGrid,
   PostLogImpactCard,
+  SmartScanButton,
+  TodayDecisionStrip,
   TrainingCoachCard,
   WeeklyCoachReview,
 } from "../components/NutritionCommandCenter";
@@ -50,6 +54,9 @@ const dateKey = (value = new Date()) =>
 
 const dateTitle = (value = "") => String(value).replaceAll("-", "/") || "--";
 
+const modeLabel = (goalMode) =>
+  goalMode === "fat_loss" ? "減脂建議" : goalMode === "fitness_daily" ? "健人日常" : "維持體態";
+
 function parseDateKey(value) {
   const [y, m, d] = String(value || "").split("-");
   return y && m && d ? new Date(Number(y), Number(m) - 1, Number(d), 12) : new Date();
@@ -57,6 +64,11 @@ function parseDateKey(value) {
 
 function monthTitle(value) {
   return `${value.getFullYear()}年${value.getMonth() + 1}月`;
+}
+
+function weekdayTitle(value) {
+  const date = parseDateKey(value);
+  return `星期${WEEKDAYS[date.getDay()]}`;
 }
 
 function proteinTarget(weightKg, mode) {
@@ -288,6 +300,43 @@ function JournalPage() {
   const latestEntry = selectedEntries[0] || null;
   const postLogImpact = useMemo(() => generatePostLogImpact(latestEntry, goalMode), [latestEntry, goalMode]);
   const weeklyReview = useMemo(() => generateWeeklyCoachReview(entries, targetValues), [entries, targetValues]);
+  const selectedDateLabel = useMemo(
+    () => `${dateTitle(selectedDateKey)} · ${weekdayTitle(selectedDateKey)}`,
+    [selectedDateKey]
+  );
+  const decisionItems = useMemo(() => {
+    const sortedMacros = [...macroTargets].sort((a, b) => b.percent - a.percent);
+    const overMacro = sortedMacros.find((target) => target.isOver);
+    const proteinTarget = macroTargets.find((target) => target.key === "protein");
+    const attention = overMacro
+      ? {
+          value: `${overMacro.label}超標`,
+          meta: overMacro.remaining.text,
+          tone: "over",
+        }
+      : proteinTarget && proteinTarget.percent < 60
+        ? {
+            value: "蛋白質偏低",
+            meta: proteinTarget.remaining.text,
+            tone: "near",
+          }
+        : {
+            value: "節奏穩定",
+            meta: "保持目前飲食節奏",
+            tone: "normal",
+          };
+    const movement = exercisePlan.shouldShow
+      ? `${exercisePlan.options[0]?.name || "快走"} ${exercisePlan.options[0]?.minutes || 20} 分鐘`
+      : goalMode === "fitness_daily"
+        ? "重訓 45-70 分鐘"
+        : "快走 20-30 分鐘";
+
+    return [
+      { label: "最該注意", ...attention },
+      { label: "下一餐方向", value: mealSuggestion.direction, meta: mealSuggestion.title, tone: "normal" },
+      { label: "今日動一動", value: movement, meta: trainingAdvice.title, tone: exercisePlan.shouldShow ? "near" : "low" },
+    ];
+  }, [exercisePlan, goalMode, macroTargets, mealSuggestion.direction, mealSuggestion.title, trainingAdvice.title]);
 
   const calendar = useMemo(
     () => buildCalendar(visibleMonth, counts, selectedDateKey, todayKey),
@@ -368,153 +417,48 @@ function JournalPage() {
 
   return (
     <Layout>
-      <section className="page-header coach-page-header">
-        <div>
-          <p className="eyebrow">AI Nutrition Command Center</p>
-          <h1>今日飲食教練</h1>
-          <p className="subtitle">依照選取日期、目標模式與會員資料，即時計算熱量、剩餘營養素與下一步建議。</p>
-        </div>
-        <div className="coach-header-actions">
-          <span className="coach-mode-pill">
-            {goalMode === "fat_loss" ? "減脂建議" : goalMode === "fitness_daily" ? "健人日常" : "維持體態"}
-          </span>
-          <Link to="/recognition" className="primary-button command-scan-button">
-            掃描下一餐
-          </Link>
-        </div>
-      </section>
+      <div className="nutrition-os-page">
+      <CoachHeader dateLabel={selectedDateLabel} modeLabel={modeLabel(goalMode)} />
 
       <CoachHeroCard
-        dateLabel={dateTitle(selectedDateKey)}
+        dateLabel={selectedDateLabel}
         memberLabel={memberName || memberAccount}
         summary={selectedSummary}
         calorieTarget={calorieGoalCard}
         coachSummary={coachSummary}
       />
 
+      <TodayDecisionStrip items={decisionItems} />
+
       <GoalModeSelector goalMode={goalMode} onChange={setGoalMode} />
 
-      <div className="coach-control-grid">
-        <section className="panel-card command-section member-profile-card">
-          <div className="section-heading">
-            <p className="eyebrow">會員資料</p>
-            <h2>代謝計算設定</h2>
+      <div className="os-main-layout">
+        <main className="os-main-column">
+          <div className="os-action-grid">
+            <DailyMissions missions={dailyMissions} />
+            <NextMealSuggestion suggestion={mealSuggestion} />
           </div>
-          <strong>{memberName || memberAccount}</strong>
-          <div className="profile-editor-grid">
-            <label>
-              <span>性別</span>
-              <select
-                value={draftProfile.gender}
-                onChange={(event) => setDraftProfile((current) => ({ ...current, gender: event.target.value }))}
-              >
-                <option value="male">男性</option>
-                <option value="female">女性</option>
-              </select>
-            </label>
-            <label>
-              <span>身高 (cm)</span>
-              <input
-                type="number"
-                min="1"
-                value={draftProfile.heightCm}
-                onChange={(event) => setDraftProfile((current) => ({ ...current, heightCm: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>體重 (kg)</span>
-              <input
-                type="number"
-                min="1"
-                step="0.1"
-                value={draftProfile.weightKg}
-                onChange={(event) => setDraftProfile((current) => ({ ...current, weightKg: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>年齡</span>
-              <input
-                type="number"
-                min="1"
-                value={draftProfile.age}
-                onChange={(event) => setDraftProfile((current) => ({ ...current, age: event.target.value }))}
-              />
-            </label>
-            <label className="profile-editor-wide">
-              <span>活動量</span>
-              <select
-                value={draftProfile.activityLevel}
-                onChange={(event) => setDraftProfile((current) => ({ ...current, activityLevel: event.target.value }))}
-              >
-                {ACTIVITY_LEVEL_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+
+          <div className="os-action-grid os-action-grid--training">
+            <TrainingCoachCard
+              goalMode={goalMode}
+              trainingDayType={trainingDayType}
+              onTrainingDayChange={setTrainingDayType}
+              advice={trainingAdvice}
+            />
+            <ExerciseRecoveryCard plan={exercisePlan} />
           </div>
-          <div className="profile-editor-actions">
-            <button type="button" className="primary-button" onClick={saveProfile}>
-              儲存會員資料
-            </button>
-            {saveMessage ? <span className="muted-text">{saveMessage}</span> : null}
+
+      <section className="os-section food-timeline-section">
+        <div className="os-section-heading os-section-heading-row">
+          <div>
+            <p className="os-kicker">Food Timeline</p>
+            <h2>今日飲食時間線</h2>
           </div>
-        </section>
-
-        <section className="panel-card command-section metabolism-card">
-          <div className="section-heading">
-            <p className="eyebrow">BMR / TDEE</p>
-            <h2>今日目標基準</h2>
-          </div>
-          <div className="coach-metric-row">
-            <div>
-              <span>基礎代謝率</span>
-              <strong>{bmr || "--"} kcal</strong>
-            </div>
-            <div>
-              <span>活動量消耗</span>
-              <strong>{tdee || "--"} kcal</strong>
-            </div>
-            <div>
-              <span>減脂建議</span>
-              <strong>{cutCalories || "--"} kcal</strong>
-            </div>
-          </div>
-          <p className="muted-text">{activity.label}</p>
-        </section>
-      </div>
-
-      <NutritionTargetGrid targets={nutritionTargets} />
-
-      <div className="coach-section-grid">
-        <DailyMissions missions={dailyMissions} />
-        <TrainingCoachCard
-          goalMode={goalMode}
-          trainingDayType={trainingDayType}
-          onTrainingDayChange={setTrainingDayType}
-          advice={trainingAdvice}
-        />
-        <NextMealSuggestion suggestion={mealSuggestion} />
-      </div>
-
-      <div className="coach-section-grid coach-section-grid--two">
-        <ExerciseRecoveryCard plan={exercisePlan} />
-        <MacroGapAnalysis targets={macroTargets} />
-      </div>
-
-      <div className="coach-section-grid coach-section-grid--two">
-        <PostLogImpactCard impact={postLogImpact} />
-        <WeeklyCoachReview review={weeklyReview} />
-      </div>
-
-      <section className="panel-card food-timeline-section">
-        <div className="section-heading">
-          <p className="eyebrow">日期切換</p>
-          <h2>依日期查看餐點</h2>
+          <span className="os-soft-badge">{dateTitle(selectedDateKey)}</span>
         </div>
         {grouped.length === 0 ? (
-          <p>目前還沒有任何日誌紀錄，先去掃描頁新增一筆吧。</p>
+          <EmptyState />
         ) : (
           <>
             <div className="journal-calendar-header">
@@ -580,25 +524,25 @@ function JournalPage() {
                 <strong>{selectedSummary.count}</strong>
               </div>
               <div className="journal-summary-metric">
-                <span>當日蛋白質</span>
+                <span>蛋白質</span>
                 <strong>{formatAmount(selectedSummary.protein, "克")}</strong>
               </div>
               <div className="journal-summary-metric">
-                <span>當日脂肪</span>
+                <span>脂肪</span>
                 <strong>{formatAmount(selectedSummary.fat, "克")}</strong>
               </div>
               <div className="journal-summary-metric">
-                <span>當日碳水</span>
+                <span>碳水</span>
                 <strong>{formatAmount(selectedSummary.carbs, "克")}</strong>
               </div>
             </div>
 
-            <div className="section-heading">
-              <p className="eyebrow">當日時間軸</p>
+            <div className="os-section-heading">
+              <p className="os-kicker">Meals</p>
               <h3>查看每一筆餐點</h3>
             </div>
             {selectedEntries.length === 0 ? (
-              <p>這一天目前沒有任何紀錄。</p>
+              <EmptyState />
             ) : (
               <div className="journal-timeline">
                 {selectedEntries.map((entry) => {
@@ -638,14 +582,14 @@ function JournalPage() {
                         </div>
                         <div className="journal-entry-macros">
                           <span>熱量 {formatAmount(nutrition.calories, "千卡")}</span>
-                          <span>蛋白質 {formatAmount(nutrition.protein, "克")}</span>
-                          <span>脂肪 {formatAmount(nutrition.fat, "克")}</span>
-                          <span>碳水 {formatAmount(nutrition.carbs, "克")}</span>
+                          <span>P {formatAmount(nutrition.protein, "克")}</span>
+                          <span>F {formatAmount(nutrition.fat, "克")}</span>
+                          <span>C {formatAmount(nutrition.carbs, "克")}</span>
                         </div>
 
                         {isEditing ? (
                           <div className="manual-edit-card journal-entry-edit-form">
-                            <p className="muted-text">這裡可以直接搜尋資料庫食物，點一下後會自動帶入份量與營養數值。</p>
+                            <p className="muted-text">調整餐點、份量或日期時間後，時間線與營養統計會立即重新歸類。</p>
                             <div className="manual-edit-grid">
                               <label className="manual-edit-wide">
                                 <span>食物名稱</span>
@@ -788,6 +732,106 @@ function JournalPage() {
           </>
         )}
       </section>
+        </main>
+
+        <aside className="os-side-column">
+          <MacroGapAnalysis targets={macroTargets} />
+          <PostLogImpactCard impact={postLogImpact} />
+          <WeeklyCoachReview review={weeklyReview} />
+
+          <section className="os-section member-profile-card">
+          <div className="section-heading">
+            <p className="eyebrow">會員資料</p>
+            <h2>代謝計算設定</h2>
+          </div>
+          <strong>{memberName || memberAccount}</strong>
+          <div className="profile-editor-grid">
+            <label>
+              <span>性別</span>
+              <select
+                value={draftProfile.gender}
+                onChange={(event) => setDraftProfile((current) => ({ ...current, gender: event.target.value }))}
+              >
+                <option value="male">男性</option>
+                <option value="female">女性</option>
+              </select>
+            </label>
+            <label>
+              <span>身高 (cm)</span>
+              <input
+                type="number"
+                min="1"
+                value={draftProfile.heightCm}
+                onChange={(event) => setDraftProfile((current) => ({ ...current, heightCm: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>體重 (kg)</span>
+              <input
+                type="number"
+                min="1"
+                step="0.1"
+                value={draftProfile.weightKg}
+                onChange={(event) => setDraftProfile((current) => ({ ...current, weightKg: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>年齡</span>
+              <input
+                type="number"
+                min="1"
+                value={draftProfile.age}
+                onChange={(event) => setDraftProfile((current) => ({ ...current, age: event.target.value }))}
+              />
+            </label>
+            <label className="profile-editor-wide">
+              <span>活動量</span>
+              <select
+                value={draftProfile.activityLevel}
+                onChange={(event) => setDraftProfile((current) => ({ ...current, activityLevel: event.target.value }))}
+              >
+                {ACTIVITY_LEVEL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="profile-editor-actions">
+            <button type="button" className="primary-button" onClick={saveProfile}>
+              儲存會員資料
+            </button>
+            {saveMessage ? <span className="muted-text">{saveMessage}</span> : null}
+          </div>
+        </section>
+
+        <section className="os-section metabolism-card">
+          <div className="section-heading">
+            <p className="eyebrow">BMR / TDEE</p>
+            <h2>今日目標基準</h2>
+          </div>
+          <div className="coach-metric-row">
+            <div>
+              <span>基礎代謝率</span>
+              <strong>{bmr || "--"} kcal</strong>
+            </div>
+            <div>
+              <span>活動量消耗</span>
+              <strong>{tdee || "--"} kcal</strong>
+            </div>
+            <div>
+              <span>減脂建議</span>
+              <strong>{cutCalories || "--"} kcal</strong>
+            </div>
+          </div>
+          <p className="muted-text">{activity.label}</p>
+        </section>
+        </aside>
+      </div>
+      <SmartScanButton />
+      <FloatingCoachButton />
+      </div>
     </Layout>
   );
 }

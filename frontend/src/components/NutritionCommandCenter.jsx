@@ -1,87 +1,118 @@
+import { Link } from "react-router-dom";
 import { GOAL_MODES, TRAINING_DAY_TYPES, formatAmount, getGoalModeConfig } from "../utils/nutritionCoachHelpers";
 
-function ProgressBar({ target, percent, visualPercent, status }) {
+function ProgressBar({ target, percent, visualPercent, status, label }) {
   if (Number(target || 0) <= 0) {
-    return <div className="coach-progress-empty">尚未設定目標</div>;
+    return <div className="os-progress-empty">尚未設定目標</div>;
   }
 
   return (
-    <div className={`coach-progress-track coach-progress-track--${status}`} aria-label={`進度 ${percent}%`}>
+    <div
+      className={`os-progress-track os-progress-track--${status}`}
+      role="progressbar"
+      aria-label={label || `進度 ${percent}%`}
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow={Math.min(100, Math.max(0, visualPercent))}
+    >
       <span style={{ width: `${visualPercent}%` }} />
     </div>
+  );
+}
+
+export function CoachHeader({ dateLabel, modeLabel }) {
+  return (
+    <section className="os-coach-header">
+      <div>
+        <p className="os-kicker">AI Nutrition Operating System</p>
+        <h1>今日飲食教練</h1>
+        <div className="os-header-meta">
+          <span>{dateLabel}</span>
+          <span>模式：{modeLabel}</span>
+        </div>
+      </div>
+      <Link to="/recognition" className="os-primary-cta">
+        + 掃描下一餐
+      </Link>
+    </section>
   );
 }
 
 export function CoachHeroCard({ dateLabel, memberLabel, summary, calorieTarget, coachSummary }) {
   const ringPercent = Math.min(100, Math.max(0, calorieTarget?.visualPercent || 0));
   const hasCalorieTarget = Boolean(calorieTarget?.hasTarget);
+  const status = calorieTarget?.status || "low";
   const ringStyle = {
-    "--coach-ring": `${ringPercent}%`,
+    "--orb-progress": `${ringPercent}%`,
   };
 
   return (
-    <section className="coach-hero-card">
-      <div className="coach-hero-main">
-        <div>
-          <p className="eyebrow">AI 飲食教練</p>
-          <h1>{coachSummary.title}</h1>
-          <p>{coachSummary.message}</p>
-          <div className="coach-status-row">
-            <span>{coachSummary.state}</span>
-            <span>{dateLabel}</span>
-            <span>{memberLabel}</span>
-          </div>
+    <section className={`os-hero os-hero--${status}`}>
+      <div className="os-hero-copy">
+        <p className="os-kicker">Today Command Center</p>
+        <h2>{coachSummary.title}</h2>
+        <div className="os-hero-numbers">
+          <strong>{formatAmount(summary.calories, "千卡")}</strong>
+          <span>/ {formatAmount(calorieTarget?.target || 0, "千卡")}</span>
         </div>
-        <div className="coach-progress-ring" style={ringStyle}>
-          <div>
-            <span>今日已攝取</span>
-            <strong>{formatAmount(summary.calories, "千卡")}</strong>
-            <small>{hasCalorieTarget ? `${calorieTarget?.percent || 0}%` : "--"}</small>
-          </div>
+        <p>{coachSummary.message}</p>
+        <div className="os-quick-actions">
+          <a href="#next-meal">下一餐建議</a>
+          <a href="#training-recovery">今日平衡方案</a>
+        </div>
+        <div className="os-hero-context">
+          <span>{coachSummary.state}</span>
+          <span>{dateLabel}</span>
+          <span>{memberLabel}</span>
         </div>
       </div>
 
-      <div className="coach-stat-strip">
-        <div>
-          <span>目標熱量</span>
-          <strong>{formatAmount(calorieTarget?.target || 0, "千卡")}</strong>
-        </div>
-        <div>
-          <span>{calorieTarget?.remaining?.label || "剩餘"}熱量</span>
-          <strong>{hasCalorieTarget ? formatAmount(calorieTarget?.remaining?.amount || 0, "千卡") : "--"}</strong>
-        </div>
-        <div>
-          <span>今日紀錄數</span>
-          <strong>{summary.count}</strong>
-        </div>
-        <div>
-          <span>蛋白質</span>
-          <strong>{formatAmount(summary.protein, "克")}</strong>
+      <div className={`live-calorie-orb live-calorie-orb--${status}`} style={ringStyle}>
+        <div className="live-calorie-orb-inner">
+          <span>今日已吃</span>
+          <strong>{formatAmount(summary.calories, "千卡").replace("千卡", " kcal")}</strong>
+          <b>{hasCalorieTarget ? `${calorieTarget?.percent || 0}%` : "--"}</b>
+          <small>{hasCalorieTarget ? calorieTarget?.remaining?.text : "尚未設定目標"}</small>
         </div>
       </div>
     </section>
   );
 }
 
+export function TodayDecisionStrip({ items }) {
+  return (
+    <section className="os-decision-strip" aria-label="今天下一步">
+      {items.map((item) => (
+        <article className={`os-decision-card os-decision-card--${item.tone || "normal"}`} key={item.label}>
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+          <small>{item.meta}</small>
+        </article>
+      ))}
+    </section>
+  );
+}
+
 export function GoalModeSelector({ goalMode, onChange }) {
   return (
-    <section className="panel-card command-section">
-      <div className="section-heading">
-        <p className="eyebrow">目標模式</p>
-        <h2>選擇今天的飲食策略</h2>
+    <section className="os-section os-mode-section">
+      <div className="os-section-heading">
+        <p className="os-kicker">Goal Mode</p>
+        <h2>今天用哪一種策略</h2>
       </div>
-      <div className="goal-mode-grid">
+      <div className="os-mode-grid">
         {Object.values(GOAL_MODES).map((mode) => (
           <button
             key={mode.key}
             type="button"
-            className={`goal-mode-card ${goalMode === mode.key ? "active" : ""}`}
+            className={`os-mode-card ${goalMode === mode.key ? "is-active" : ""}`}
             onClick={() => onChange(mode.key)}
           >
-            <span>{mode.shortLabel}</span>
+            {goalMode === mode.key ? <span className="os-current-badge">目前模式</span> : null}
             <strong>{mode.label}</strong>
             <small>{mode.targetUser}</small>
             <em>{mode.nutritionStrategy}</em>
+            <b>{mode.exerciseStrategy}</b>
           </button>
         ))}
       </div>
@@ -91,9 +122,9 @@ export function GoalModeSelector({ goalMode, onChange }) {
 
 export function NutritionTargetGrid({ targets }) {
   return (
-    <section className="panel-card command-section">
-      <div className="section-heading">
-        <p className="eyebrow">營養目標</p>
+    <section className="os-section">
+      <div className="os-section-heading">
+        <p className="os-kicker">Nutrition Targets</p>
         <h2>今日熱量與三大營養素</h2>
       </div>
       <div className="nutrition-command-grid">
@@ -125,6 +156,7 @@ export function NutritionTargetGrid({ targets }) {
               percent={target.hasTarget ? target.percent : 0}
               visualPercent={target.visualPercent}
               status={target.status}
+              label={`${target.label}進度`}
             />
           </article>
         ))}
@@ -135,16 +167,17 @@ export function NutritionTargetGrid({ targets }) {
 
 export function DailyMissions({ missions }) {
   return (
-    <section className="panel-card command-section">
-      <div className="section-heading">
-        <p className="eyebrow">每日任務</p>
-        <h2>今天先完成這三件事</h2>
+    <section className="os-section os-mission-card">
+      <div className="os-section-heading">
+        <p className="os-kicker">Action Board</p>
+        <h2>今日任務</h2>
       </div>
-      <ol className="daily-mission-list">
-        {missions.map((mission) => (
+      <ol className="os-mission-list">
+        {missions.slice(0, 3).map((mission, index) => (
           <li key={mission}>
-            <span />
+            <span>{String(index + 1).padStart(2, "0")}</span>
             <p>{mission}</p>
+            <b>{index === 0 ? "優先" : "今日"}</b>
           </li>
         ))}
       </ol>
@@ -156,12 +189,12 @@ export function TrainingCoachCard({ goalMode, trainingDayType, onTrainingDayChan
   const mode = getGoalModeConfig(goalMode);
 
   return (
-    <section className="panel-card command-section coach-advice-card">
-      <div className="section-heading">
-        <p className="eyebrow">訓練搭配</p>
+    <section className="os-section os-training-card" id="training-recovery">
+      <div className="os-section-heading">
+        <p className="os-kicker">Training + Recovery</p>
         <h2>{advice.title}</h2>
       </div>
-      <label className="training-day-select">
+      <label className="os-training-select">
         <span>今天類型</span>
         <select value={trainingDayType} onChange={(event) => onTrainingDayChange(event.target.value)}>
           {Object.entries(TRAINING_DAY_TYPES).map(([value, label]) => (
@@ -173,48 +206,54 @@ export function TrainingCoachCard({ goalMode, trainingDayType, onTrainingDayChan
       </label>
       <p>{advice.body}</p>
       <small>{advice.note}</small>
-      <div className="coach-mode-pill">{mode.exerciseStrategy}</div>
+      <div className="os-soft-badge">{mode.exerciseStrategy}</div>
     </section>
   );
 }
 
 export function NextMealSuggestion({ suggestion }) {
   return (
-    <section className="panel-card command-section">
-      <div className="section-heading">
-        <p className="eyebrow">下一餐</p>
-        <h2>{suggestion.title}</h2>
+    <section className="os-section os-meal-card" id="next-meal">
+      <div className="os-section-heading os-section-heading-row">
+        <div>
+          <p className="os-kicker">Meal Intelligence</p>
+          <h2>{suggestion.title}</h2>
+        </div>
+        <span className="os-ai-badge">AI 建議</span>
       </div>
-      <div className="meal-direction-card">
-        <span>建議方向</span>
+      <div className="os-meal-direction">
+        <span>推薦方向</span>
         <strong>{suggestion.direction}</strong>
         <p>{suggestion.reason}</p>
       </div>
-      <div className="meal-chip-row">
+      <div className="os-chip-group">
         <span>推薦</span>
         {suggestion.recommended.map((item) => (
           <strong key={item}>{item}</strong>
         ))}
       </div>
-      <div className="meal-chip-row meal-chip-row--avoid">
-        <span>少碰</span>
+      <div className="os-chip-group os-chip-group--avoid">
+        <span>避免</span>
         {suggestion.avoid.map((item) => (
           <strong key={item}>{item}</strong>
         ))}
       </div>
+      <Link to="/recognition" className="os-secondary-cta">
+        掃描下一餐
+      </Link>
     </section>
   );
 }
 
 export function ExerciseRecoveryCard({ plan }) {
   return (
-    <section className={`panel-card command-section recovery-plan-card ${plan.shouldShow ? "active" : ""}`}>
-      <div className="section-heading">
-        <p className="eyebrow">運動換算</p>
-        <h2>{plan.shouldShow ? "可以這樣平衡今天" : "目前不需要補償運動"}</h2>
+    <section className={`os-section os-recovery-card ${plan.shouldShow ? "is-active" : ""}`}>
+      <div className="os-section-heading">
+        <p className="os-kicker">Balance Plan</p>
+        <h2>{plan.shouldShow ? "今日平衡方案" : "目前不需要補償運動"}</h2>
       </div>
       <p>{plan.message}</p>
-      <div className="exercise-option-grid">
+      <div className="os-exercise-grid">
         {plan.options.map((option) => (
           <article key={option.name}>
             <span>{option.intensity}</span>
@@ -224,35 +263,42 @@ export function ExerciseRecoveryCard({ plan }) {
           </article>
         ))}
       </div>
-      {plan.usesDefaultWeight ? <small className="muted-text">未設定體重時會先以 70kg 估算。</small> : null}
+      <small className="os-helper-note">估算值，請依自身體能調整。也可以分 2-3 天用小幅飲食調整平衡。</small>
+      {plan.usesDefaultWeight ? <small className="os-helper-note">未設定體重時會先以 70kg 估算。</small> : null}
     </section>
   );
 }
 
 export function MacroGapAnalysis({ targets }) {
   return (
-    <section className="panel-card command-section">
-      <div className="section-heading">
-        <p className="eyebrow">缺口分析</p>
-        <h2>蛋白質、脂肪、碳水狀態</h2>
+    <section className="os-section os-macro-panel">
+      <div className="os-section-heading">
+        <p className="os-kicker">Macro Balance</p>
+        <h2>營養平衡</h2>
       </div>
-      <div className="macro-gap-grid">
+      <div className="os-macro-list">
         {targets.map((target) => (
-          <article className={`macro-gap-card macro-gap-card--${target.status}`} key={target.key}>
-            <div>
-              <span>{target.label}</span>
-              <strong>{target.remaining.text}</strong>
+          <article className={`os-macro-row os-macro-row--${target.status}`} key={target.key}>
+            <span className="os-macro-token">{target.token}</span>
+            <div className="os-macro-main">
+              <div>
+                <strong>{target.label}</strong>
+                <small>
+                  {formatAmount(target.used, target.unit)} / {target.hasTarget ? formatAmount(target.target, target.unit) : "--"}
+                </small>
+              </div>
+              <ProgressBar
+                target={target.target}
+                percent={target.percent}
+                visualPercent={target.visualPercent}
+                status={target.status}
+                label={`${target.label}進度`}
+              />
             </div>
-            <ProgressBar
-              target={target.target}
-              percent={target.percent}
-              visualPercent={target.visualPercent}
-              status={target.status}
-            />
-            <small>
-              已使用 {formatAmount(target.used, target.unit)} / 目標{" "}
-              {target.hasTarget ? formatAmount(target.target, target.unit) : "--"}
-            </small>
+            <div className="os-macro-result">
+              <strong>{target.hasTarget ? `${target.percent}%` : "--"}</strong>
+              <small>{target.remaining.text}</small>
+            </div>
           </article>
         ))}
       </div>
@@ -264,13 +310,13 @@ export function PostLogImpactCard({ impact }) {
   if (!impact) return null;
 
   return (
-    <section className="panel-card command-section post-log-impact-card">
-      <div className="section-heading">
-        <p className="eyebrow">最新紀錄影響</p>
-        <h2>{impact.foodName}</h2>
+    <section className="os-section os-impact-card">
+      <div className="os-section-heading">
+        <p className="os-kicker">Latest Impact</p>
+        <h2>已加入 {impact.foodName}</h2>
       </div>
       <p>{impact.message}</p>
-      <div className="impact-macro-row">
+      <div className="os-impact-row">
         <span>{formatAmount(impact.nutrition.calories, "千卡")}</span>
         <span>P {formatAmount(impact.nutrition.protein, "克")}</span>
         <span>F {formatAmount(impact.nutrition.fat, "克")}</span>
@@ -282,32 +328,60 @@ export function PostLogImpactCard({ impact }) {
 
 export function WeeklyCoachReview({ review }) {
   return (
-    <section className="panel-card command-section weekly-review-card">
-      <div className="section-heading">
-        <p className="eyebrow">週回顧</p>
-        <h2>{review.ready ? "本週飲食趨勢" : "等待更多紀錄"}</h2>
+    <section className="os-section os-memory-card">
+      <div className="os-section-heading">
+        <p className="os-kicker">Personal Memory</p>
+        <h2>{review.ready ? "你的飲食模式" : "我會越來越懂你"}</h2>
       </div>
       <p>{review.message}</p>
       {review.ready ? (
-        <div className="weekly-review-stats">
+        <div className="os-memory-stats">
           <div>
             <span>平均熱量</span>
             <strong>{formatAmount(review.averageCalories, "千卡")}</strong>
           </div>
           <div>
-            <span>蛋白達標日</span>
+            <span>蛋白達標</span>
             <strong>
-              {review.proteinDays}/{review.totalDays}
+              {review.proteinDays}/{review.totalDays} 天
             </strong>
           </div>
           <div>
-            <span>脂肪超標日</span>
+            <span>脂肪超標</span>
             <strong>
-              {review.fatOverDays}/{review.totalDays}
+              {review.fatOverDays}/{review.totalDays} 天
             </strong>
           </div>
         </div>
       ) : null}
     </section>
+  );
+}
+
+export function SmartScanButton() {
+  return (
+    <Link to="/recognition" className="os-floating-scan">
+      + 掃描
+    </Link>
+  );
+}
+
+export function FloatingCoachButton() {
+  return (
+    <a href="#next-meal" className="os-floating-coach">
+      問教練
+    </a>
+  );
+}
+
+export function EmptyState() {
+  return (
+    <div className="os-empty-state">
+      <strong>今天還沒有飲食紀錄</strong>
+      <p>掃描你的第一份餐點，我會幫你估算熱量與下一餐策略。</p>
+      <Link to="/recognition" className="os-primary-cta">
+        開始掃描
+      </Link>
+    </div>
   );
 }

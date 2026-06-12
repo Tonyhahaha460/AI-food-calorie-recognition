@@ -235,7 +235,7 @@ echo Installation complete.
 echo ========================================
 echo.
 echo Next step:
-echo   Run 啟動前後端.bat
+echo   Run the startup script: 啟動前後端.bat
 echo.
 echo Local URLs after startup:
 echo   Backend:  http://localhost:5000

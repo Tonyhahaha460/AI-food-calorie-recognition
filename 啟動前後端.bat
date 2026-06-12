@@ -11,6 +11,8 @@ set "BACKEND_PYTHON=%BACKEND_DIR%\.venv\Scripts\python.exe"
 set "BACKEND_REQUIREMENTS=%BACKEND_DIR%\requirements.txt"
 set "WORK_TMP=%ROOT_DIR%\tmp"
 set "VENV_DIR=%BACKEND_DIR%\.venv"
+set "BACKEND_STARTER=%WORK_TMP%\start_backend.cmd"
+set "FRONTEND_STARTER=%WORK_TMP%\start_frontend.cmd"
 set "PYTHON_BOOTSTRAP_CMD="
 set "PYTHON_BOOTSTRAP_ARGS="
 set "NPM_CMD="
@@ -201,10 +203,26 @@ if not exist "%FRONTEND_DIR%\node_modules" (
 )
 
 echo Starting backend...
-start "AI Food Journal Backend" /D "%BACKEND_DIR%" cmd /k "call ""%BACKEND_PYTHON%"" ""run.py"""
+(
+  echo @echo off
+  echo chcp 65001 ^>nul
+  echo set "PYTHONUTF8=1"
+  echo set "PYTHONIOENCODING=utf-8"
+  echo cd /d "%BACKEND_DIR%"
+  echo call "%BACKEND_PYTHON%" "run.py"
+  echo pause
+) > "%BACKEND_STARTER%"
+start "AI Food Journal Backend" "%BACKEND_STARTER%"
 
 echo Starting frontend...
-start "AI Food Journal Frontend" /D "%FRONTEND_DIR%" cmd /k "call ""%NPM_CMD%"" run dev"
+(
+  echo @echo off
+  echo chcp 65001 ^>nul
+  echo cd /d "%FRONTEND_DIR%"
+  echo call "%NPM_CMD%" run dev
+  echo pause
+) > "%FRONTEND_STARTER%"
+start "AI Food Journal Frontend" "%FRONTEND_STARTER%"
 
 echo.
 echo Backend:  http://localhost:5000

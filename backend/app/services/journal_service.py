@@ -49,6 +49,8 @@ class JournalService:
                 image_preview,
                 source,
                 created_at,
+                local_date_time,
+                local_date,
                 date_key,
                 calories,
                 protein,
@@ -89,13 +91,16 @@ class JournalService:
         if existing is None:
             raise JournalError("找不到這筆日誌資料。")
 
-        next_created_at = patch.get("created_at") or patch.get("recorded_at") or existing["created_at"]
-        timestamp = cls._resolve_timestamp({"created_at": next_created_at})
+        timestamp = cls._resolve_timestamp({**existing, **patch})
+        local_date_time = cls._resolve_local_date_time({**existing, **patch}, timestamp)
+        local_date = cls._resolve_local_date({**existing, **patch}, timestamp, local_date_time)
         updated = {
             **existing,
             **{key: value for key, value in patch.items() if key != "nutrition"},
             "created_at": timestamp.isoformat(),
-            "date_key": cls._date_key(timestamp),
+            "local_date_time": local_date_time,
+            "local_date": local_date,
+            "date_key": local_date,
             "history_record_id": cls._normalize_history_record_id(
                 patch.get("history_record_id", existing.get("history_record_id"))
             ),
@@ -144,6 +149,8 @@ class JournalService:
                     image_preview,
                     source,
                     created_at,
+                    local_date_time,
+                    local_date,
                     date_key,
                     calories,
                     protein,
@@ -170,6 +177,8 @@ class JournalService:
                     image_preview,
                     source,
                     created_at,
+                    local_date_time,
+                    local_date,
                     date_key,
                     calories,
                     protein,
@@ -177,7 +186,7 @@ class JournalService:
                     carbs,
                     history_record_id
                 )
-                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     member_account = excluded.member_account,
                     food_name = excluded.food_name,
@@ -185,6 +194,8 @@ class JournalService:
                     image_preview = excluded.image_preview,
                     source = excluded.source,
                     created_at = excluded.created_at,
+                    local_date_time = excluded.local_date_time,
+                    local_date = excluded.local_date,
                     date_key = excluded.date_key,
                     calories = excluded.calories,
                     protein = excluded.protein,
@@ -200,6 +211,8 @@ class JournalService:
                     entry["image_preview"],
                     entry["source"],
                     entry["created_at"],
+                    entry["local_date_time"],
+                    entry["local_date"],
                     entry["date_key"],
                     float(entry["nutrition"]["calories"]),
                     float(entry["nutrition"]["protein"]),
@@ -214,6 +227,8 @@ class JournalService:
     @classmethod
     def _build_entry(cls, member_account: str, payload: dict[str, Any]) -> dict[str, Any]:
         timestamp = cls._resolve_timestamp(payload)
+        local_date_time = cls._resolve_local_date_time(payload, timestamp)
+        local_date = cls._resolve_local_date(payload, timestamp, local_date_time)
         return {
             "id": str(payload.get("id") or uuid4()),
             "member_account": member_account,
@@ -222,7 +237,9 @@ class JournalService:
             "image_preview": str(payload.get("image_preview", "")).strip(),
             "source": str(payload.get("source", "")).strip() or "manual",
             "created_at": timestamp.isoformat(),
-            "date_key": cls._date_key(timestamp),
+            "local_date_time": local_date_time,
+            "local_date": local_date,
+            "date_key": local_date,
             "history_record_id": cls._normalize_history_record_id(payload.get("history_record_id")),
             "nutrition": cls._normalize_nutrition(payload),
         }
@@ -237,6 +254,10 @@ class JournalService:
             "image_preview": row["image_preview"],
             "source": row["source"],
             "created_at": row["created_at"],
+            "local_date_time": row["local_date_time"] if "local_date_time" in row.keys() else "",
+            "localDateTime": row["local_date_time"] if "local_date_time" in row.keys() else "",
+            "local_date": row["local_date"] if "local_date" in row.keys() else row["date_key"],
+            "date": row["local_date"] if "local_date" in row.keys() else row["date_key"],
             "date_key": row["date_key"],
             "history_record_id": int(row["history_record_id"] or 0),
             "nutrition": {
@@ -295,7 +316,16 @@ class JournalService:
 
     @staticmethod
     def _resolve_timestamp(payload: dict[str, Any]) -> datetime:
-        candidate = payload.get("recorded_at") or payload.get("created_at")
+        candidate = (
+            payload.get("local_date_time")
+            or payload.get("localDateTime")
+            or payload.get("recordedDateTime")
+            or payload.get("recorded_date_time")
+            or payload.get("recorded_at")
+            or payload.get("recordedAt")
+            or payload.get("created_at")
+            or payload.get("createdAt")
+        )
         if not candidate:
             return datetime.now().astimezone()
 
@@ -313,6 +343,34 @@ class JournalService:
             return datetime.now().astimezone()
 
         return parsed.astimezone() if parsed.tzinfo else parsed
+
+    @staticmethod
+    def _resolve_local_date_time(payload: dict[str, Any], timestamp: datetime) -> str:
+        candidate = (
+            payload.get("local_date_time")
+            or payload.get("localDateTime")
+            or payload.get("recordedDateTime")
+            or payload.get("recorded_date_time")
+        )
+        raw = str(candidate or "").strip()
+        if raw and "T" in raw:
+            return raw[:16]
+
+        local_timestamp = timestamp.astimezone() if timestamp.tzinfo else timestamp
+        return local_timestamp.strftime("%Y-%m-%dT%H:%M")
+
+    @classmethod
+    def _resolve_local_date(cls, payload: dict[str, Any], timestamp: datetime, local_date_time: str) -> str:
+        candidate = payload.get("local_date") or payload.get("date")
+        raw = str(candidate or "").strip()
+        if raw:
+            return raw[:10]
+        if local_date_time:
+            return local_date_time[:10]
+        raw_date_key = str(payload.get("date_key") or "").strip()
+        if raw_date_key:
+            return raw_date_key[:10]
+        return cls._date_key(timestamp.astimezone() if timestamp.tzinfo else timestamp)
 
     @staticmethod
     def _date_key(value: datetime) -> str:
@@ -365,6 +423,8 @@ class JournalService:
                     image_preview,
                     source,
                     created_at,
+                    local_date_time,
+                    local_date,
                     date_key,
                     calories,
                     protein,

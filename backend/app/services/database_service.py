@@ -88,6 +88,8 @@ class DatabaseService:
                 image_preview TEXT NOT NULL DEFAULT '',
                 source TEXT NOT NULL DEFAULT 'manual',
                 created_at TEXT NOT NULL,
+                local_date_time TEXT NOT NULL DEFAULT '',
+                local_date TEXT NOT NULL DEFAULT '',
                 date_key TEXT NOT NULL,
                 calories REAL NOT NULL DEFAULT 0,
                 protein REAL NOT NULL DEFAULT 0,
@@ -116,6 +118,8 @@ class DatabaseService:
             """
         )
         DatabaseService._ensure_column(conn, "journal_entries", "history_record_id", "INTEGER")
+        DatabaseService._ensure_column(conn, "journal_entries", "local_date_time", "TEXT NOT NULL DEFAULT ''")
+        DatabaseService._ensure_column(conn, "journal_entries", "local_date", "TEXT NOT NULL DEFAULT ''")
         DatabaseService._ensure_column(conn, "history_records", "journal_entry_id", "TEXT NOT NULL DEFAULT ''")
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_journal_history_record ON journal_entries(history_record_id)"

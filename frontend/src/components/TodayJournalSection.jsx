@@ -18,6 +18,7 @@ const COPY = {
   sourceSwitch: "加入來源",
   sourceAi: "AI 分析",
   sourceManual: "手動輸入",
+  recordDateTime: "紀錄日期時間",
 };
 
 function formatTime(value) {
@@ -51,6 +52,8 @@ function TodayJournalSection({
   onSelectSource,
   todayEntries,
   summary,
+  logDateTime,
+  onLogDateTimeChange,
   onAddEntry,
   onPromptRegister,
   onRemoveEntry,
@@ -151,6 +154,15 @@ function TodayJournalSection({
               })()}
             </div>
           </div>
+
+          <label className="today-journal-datetime-field">
+            <span>{COPY.recordDateTime}</span>
+            <input
+              type="datetime-local"
+              value={logDateTime}
+              onChange={(event) => onLogDateTimeChange(event.target.value)}
+            />
+          </label>
         </div>
       ) : null}
 
@@ -183,7 +195,8 @@ function TodayJournalSection({
                 <strong>{entry.food_name}</strong>
                 <span>{entry.portion_label}</span>
                 <small>
-                  {formatAmount(normalizeNutrition(entry).calories, "千卡")} · {formatTime(entry.created_at)}
+                  {formatAmount(normalizeNutrition(entry).calories, "千卡")} ·{" "}
+                  {formatTime(entry.local_date_time || entry.localDateTime || entry.created_at)}
                 </small>
                 <button
                   type="button"

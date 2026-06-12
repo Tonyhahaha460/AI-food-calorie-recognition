@@ -8,6 +8,8 @@ import UploadPanel from "../components/UploadPanel";
 import { useAuth } from "../context/AuthContext";
 import {
   addJournalEntry,
+  buildJournalDateTimePayload,
+  getLocalDateTimeInputValue,
   listTodayJournalEntries,
   normalizeNutrition,
   removeJournalEntry,
@@ -38,6 +40,12 @@ function buildManualResult(manualLookup) {
     nutrition: normalizeNutrition(manualLookup),
     image_preview: "",
     source: "manual_lookup",
+    recordedDateTime: manualLookup.recordedDateTime,
+    localDateTime: manualLookup.recordedDateTime,
+    local_date_time: manualLookup.recordedDateTime,
+    date: manualLookup.recordedDateTime ? manualLookup.recordedDateTime.slice(0, 10) : "",
+    local_date: manualLookup.recordedDateTime ? manualLookup.recordedDateTime.slice(0, 10) : "",
+    date_key: manualLookup.recordedDateTime ? manualLookup.recordedDateTime.slice(0, 10) : "",
     recorded_at: manualLookup.recordedAt,
     history_record_id: null,
   };
@@ -84,6 +92,7 @@ function RecognitionPage() {
   const [appliedManualLookup, setAppliedManualLookup] = useState(null);
   const [todayEntries, setTodayEntries] = useState([]);
   const [journalSourceMode, setJournalSourceMode] = useState("");
+  const [logDateTime, setLogDateTime] = useState(() => getLocalDateTimeInputValue());
   const savedFeedbackKeysRef = useRef(new Set());
 
   const manualCandidate = useMemo(
@@ -118,6 +127,12 @@ function RecognitionPage() {
   useEffect(() => {
     syncTodayEntries();
   }, [isMemberLoggedIn, memberAccount]);
+
+  useEffect(() => {
+    if (manualCandidate?.recordedDateTime) {
+      setLogDateTime(manualCandidate.recordedDateTime);
+    }
+  }, [manualCandidate?.recordedDateTime]);
 
   useEffect(() => {
     return () => {
@@ -290,11 +305,15 @@ function RecognitionPage() {
     }
 
     try {
-      await addJournalEntry(memberAccount, journalCandidate);
+      await addJournalEntry(memberAccount, {
+        ...journalCandidate,
+        ...buildJournalDateTimePayload(logDateTime),
+      });
       if (journalSourceMode === "manual") {
         await saveManualTrainingFeedback(manualLookup || appliedManualLookup);
       }
       await syncTodayEntries();
+      setLogDateTime(getLocalDateTimeInputValue());
       setError("");
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : COPY.addJournalFailed);
@@ -407,6 +426,8 @@ function RecognitionPage() {
         onSelectSource={handleSelectJournalSource}
         todayEntries={todayEntries}
         summary={journalSummary}
+        logDateTime={logDateTime}
+        onLogDateTimeChange={setLogDateTime}
         onAddEntry={handleAddTodayJournal}
         onPromptRegister={handlePromptRegister}
         onRemoveEntry={handleRemoveJournalEntry}

@@ -71,15 +71,121 @@ export function normalizeNutrition(entryOrNutrition = {}) {
   };
 }
 
+export function getLocalDateTimeInputValue(date = new Date()) {
+  const value = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(
+    value.getMinutes()
+  )}`;
+}
+
+export function getEntryLocalDate(entry = {}) {
+  const raw =
+    entry.localDateTime ||
+    entry.local_date_time ||
+    entry.recordedDateTime ||
+    entry.recorded_date_time ||
+    entry.date ||
+    entry.local_date ||
+    entry.date_key ||
+    entry.createdAt ||
+    entry.created_at ||
+    entry.recordedAt ||
+    entry.recorded_at ||
+    entry.recordDate;
+
+  if (!raw) {
+    return "";
+  }
+
+  const text = String(raw).trim();
+  if (!text) {
+    return "";
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return text;
+  }
+
+  if (text.includes("T") && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(text)) {
+    return text.slice(0, 10);
+  }
+
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) {
+    return text.slice(0, 10);
+  }
+
+  return buildDateKey(date);
+}
+
+export function getEntryDateTimeInputValue(entry = {}) {
+  const localValue =
+    entry.localDateTime || entry.local_date_time || entry.recordedDateTime || entry.recorded_date_time || "";
+  if (localValue && String(localValue).includes("T")) {
+    return String(localValue).slice(0, 16);
+  }
+
+  const raw = entry.createdAt || entry.created_at || entry.recordedAt || entry.recorded_at || entry.date || entry.date_key;
+  if (!raw) {
+    return getLocalDateTimeInputValue();
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(raw).trim())) {
+    return `${String(raw).trim()}T00:00`;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    const fallbackDate = getEntryLocalDate(entry);
+    return fallbackDate ? `${fallbackDate}T00:00` : getLocalDateTimeInputValue();
+  }
+
+  return getLocalDateTimeInputValue(parsed);
+}
+
+export function buildJournalDateTimePayload(localDateTime = getLocalDateTimeInputValue()) {
+  const value = String(localDateTime || "").trim() || getLocalDateTimeInputValue();
+  const date = value.slice(0, 10);
+  const parsed = new Date(value);
+  const createdAt = Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+
+  return {
+    localDateTime: value,
+    local_date_time: value,
+    date,
+    local_date: date,
+    date_key: date,
+    createdAt,
+    created_at: createdAt,
+    recordedAt: createdAt,
+    recorded_at: createdAt,
+  };
+}
+
 export function normalizeJournalEntry(entry = {}) {
   const source = entry && typeof entry === "object" ? entry : {};
+  const dateKey = getEntryLocalDate(source) || buildDateKey(new Date());
+  const localDateTime =
+    source.localDateTime ||
+    source.local_date_time ||
+    source.recordedDateTime ||
+    source.recorded_date_time ||
+    getEntryDateTimeInputValue(source);
   const normalized = {
     ...source,
+    created_at: source.created_at || source.createdAt || source.recorded_at || source.recordedAt,
+    createdAt: source.createdAt || source.created_at || source.recordedAt || source.recorded_at,
+    localDateTime,
+    local_date_time: localDateTime,
+    date: source.date || source.local_date || dateKey,
+    local_date: source.local_date || source.date || dateKey,
+    date_key: dateKey,
     nutrition: normalizeNutrition(source),
   };
 
-  if (!normalized.date_key && normalized.created_at) {
-    normalized.date_key = buildDateKey(new Date(normalized.created_at));
+  if (!normalized.created_at && localDateTime) {
+    normalized.created_at = buildJournalDateTimePayload(localDateTime).created_at;
   }
 
   return normalized;

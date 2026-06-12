@@ -3311,3 +3311,656 @@ body::after {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* AI Nutrition Command Center */
+:root {
+  --coach-bg: #06131c;
+  --coach-surface: rgba(9, 24, 35, 0.78);
+  --coach-surface-strong: rgba(11, 31, 44, 0.94);
+  --coach-line: rgba(125, 211, 252, 0.22);
+  --coach-text: #eef8ff;
+  --coach-muted: #9db3c6;
+  --coach-cyan: #31d7e8;
+  --coach-lime: #a6f35f;
+  --coach-amber: #facc15;
+  --coach-red: #fb7185;
+  --coach-violet: #a78bfa;
+}
+
+.coach-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 8% 10%, rgba(49, 215, 232, 0.22), transparent 32%),
+    radial-gradient(circle at 92% 18%, rgba(166, 243, 95, 0.16), transparent 28%),
+    linear-gradient(135deg, rgba(8, 28, 43, 0.96), rgba(6, 16, 27, 0.88));
+}
+
+.coach-page-header h1 {
+  margin-bottom: 10px;
+}
+
+.coach-header-actions,
+.coach-status-row,
+.coach-stat-strip,
+.impact-macro-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.coach-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: #07111f;
+  background: linear-gradient(135deg, var(--coach-amber), var(--coach-lime));
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgba(250, 204, 21, 0.14);
+}
+
+.command-scan-button {
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+.coach-hero-card {
+  position: relative;
+  display: grid;
+  gap: 22px;
+  padding: clamp(24px, 4vw, 36px);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 30px;
+  color: var(--coach-text);
+  background:
+    radial-gradient(circle at 20% 15%, rgba(49, 215, 232, 0.28), transparent 34%),
+    radial-gradient(circle at 78% 38%, rgba(167, 139, 250, 0.18), transparent 30%),
+    linear-gradient(145deg, rgba(10, 32, 46, 0.96), rgba(7, 17, 29, 0.92));
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.34);
+  overflow: hidden;
+}
+
+.coach-hero-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+}
+
+.coach-hero-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.coach-hero-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+  align-items: center;
+  gap: 28px;
+}
+
+.coach-hero-main h1 {
+  margin: 12px 0;
+  color: #f8fbff;
+  font-size: clamp(2.1rem, 6vw, 4.8rem);
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.coach-hero-main p {
+  max-width: 760px;
+  margin: 0;
+  color: #c7d7e8;
+  font-size: 1.04rem;
+  line-height: 1.8;
+}
+
+.coach-status-row {
+  margin-top: 18px;
+}
+
+.coach-status-row span {
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: #c9faff;
+  background: rgba(49, 215, 232, 0.1);
+  border: 1px solid rgba(49, 215, 232, 0.18);
+  font-weight: 800;
+}
+
+.coach-progress-ring {
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  width: min(280px, 62vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(6, 19, 28, 0.96) 0 57%, transparent 58%),
+    conic-gradient(var(--coach-lime) 0 var(--coach-ring), rgba(148, 163, 184, 0.18) var(--coach-ring) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 24px 70px rgba(49, 215, 232, 0.14);
+}
+
+.coach-progress-ring > div {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  width: 66%;
+  text-align: center;
+}
+
+.coach-progress-ring span,
+.coach-progress-ring small,
+.coach-stat-strip span,
+.coach-metric-row span,
+.nutrition-command-values span,
+.nutrition-command-topline span,
+.macro-gap-card span,
+.meal-direction-card span,
+.meal-chip-row > span,
+.weekly-review-stats span,
+.training-day-select span {
+  color: var(--coach-muted);
+}
+
+.coach-progress-ring strong {
+  color: #f8fbff;
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.coach-progress-ring small {
+  font-weight: 900;
+}
+
+.coach-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.coach-stat-strip div,
+.coach-metric-row div,
+.weekly-review-stats div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 18px;
+  background: rgba(2, 10, 18, 0.28);
+}
+
+.coach-stat-strip strong,
+.coach-metric-row strong,
+.weekly-review-stats strong {
+  color: #f8fbff;
+  font-size: 1.1rem;
+}
+
+.command-section {
+  overflow: hidden;
+  background:
+    linear-gradient(145deg, rgba(10, 28, 42, 0.88), rgba(6, 17, 29, 0.78)),
+    rgba(7, 17, 29, 0.75);
+}
+
+.coach-control-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.1fr) minmax(300px, 0.9fr);
+  gap: 18px;
+}
+
+.member-profile-card > strong {
+  color: var(--coach-text);
+  font-size: 1.15rem;
+}
+
+.coach-metric-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.goal-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.goal-mode-card {
+  display: grid;
+  gap: 10px;
+  min-height: 184px;
+  padding: 18px;
+  text-align: left;
+  border-radius: 24px;
+  color: var(--coach-text);
+  background: rgba(2, 10, 18, 0.28);
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.goal-mode-card:hover,
+.goal-mode-card.active {
+  transform: translateY(-2px);
+  border-color: rgba(166, 243, 95, 0.55);
+  background: linear-gradient(145deg, rgba(49, 215, 232, 0.15), rgba(166, 243, 95, 0.09));
+  box-shadow: 0 18px 40px rgba(49, 215, 232, 0.12);
+}
+
+.goal-mode-card span {
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #06131c;
+  background: linear-gradient(135deg, var(--coach-cyan), var(--coach-lime));
+  font-weight: 900;
+  font-size: 0.78rem;
+}
+
+.goal-mode-card strong {
+  color: #f8fbff;
+  font-size: 1.25rem;
+}
+
+.goal-mode-card small,
+.goal-mode-card em {
+  color: var(--coach-muted);
+  font-style: normal;
+  line-height: 1.55;
+}
+
+.nutrition-command-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(190px, 1fr));
+  gap: 16px;
+}
+
+.nutrition-command-card {
+  display: grid;
+  gap: 16px;
+  min-height: 260px;
+  padding: 20px;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 90% 8%, rgba(49, 215, 232, 0.13), transparent 30%),
+    rgba(2, 10, 18, 0.28);
+}
+
+.nutrition-command-topline,
+.nutrition-command-values div,
+.macro-gap-card > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nutrition-command-topline > div {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.nutrition-command-token {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  color: #06131c !important;
+  background: linear-gradient(135deg, var(--coach-cyan), var(--coach-lime));
+  font-weight: 950;
+}
+
+.nutrition-command-topline strong {
+  color: var(--coach-text);
+  font-size: 1.8rem;
+}
+
+.nutrition-command-values {
+  display: grid;
+  gap: 10px;
+}
+
+.nutrition-command-values strong,
+.macro-gap-card strong,
+.meal-direction-card strong {
+  color: var(--coach-text);
+}
+
+.coach-progress-track {
+  width: 100%;
+  height: 11px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
+}
+
+.coach-progress-track span {
+  display: block;
+  min-width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--coach-cyan), var(--coach-lime));
+  box-shadow: 0 0 24px rgba(49, 215, 232, 0.26);
+  transition: width 420ms ease;
+}
+
+.coach-progress-track--near span {
+  background: linear-gradient(90deg, var(--coach-cyan), var(--coach-amber));
+}
+
+.coach-progress-track--over span {
+  background: linear-gradient(90deg, var(--coach-amber), var(--coach-red));
+}
+
+.coach-progress-empty {
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--coach-muted);
+  background: rgba(148, 163, 184, 0.1);
+  font-weight: 800;
+}
+
+.coach-section-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.coach-section-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.daily-mission-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.daily-mission-list li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 13px;
+  border-radius: 18px;
+  background: rgba(2, 10, 18, 0.26);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+}
+
+.daily-mission-list span {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--coach-cyan), var(--coach-lime));
+  box-shadow: 0 0 18px rgba(49, 215, 232, 0.2);
+}
+
+.daily-mission-list p,
+.coach-advice-card p,
+.recovery-plan-card p,
+.weekly-review-card p,
+.post-log-impact-card p,
+.meal-direction-card p {
+  margin: 0;
+  color: #c8d8e7;
+  line-height: 1.65;
+}
+
+.training-day-select {
+  display: grid;
+  gap: 8px;
+}
+
+.training-day-select select {
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 14px;
+  color: var(--coach-text);
+  background: rgba(2, 10, 18, 0.48);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+}
+
+.coach-advice-card small {
+  color: #d9f99d;
+  line-height: 1.6;
+}
+
+.meal-direction-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(49, 215, 232, 0.12), rgba(166, 243, 95, 0.08));
+  border: 1px solid rgba(125, 211, 252, 0.18);
+}
+
+.meal-direction-card strong {
+  font-size: 1.25rem;
+}
+
+.meal-chip-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meal-chip-row strong,
+.impact-macro-row span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: 999px;
+  color: #06131c;
+  background: #91f7ff;
+  font-size: 0.9rem;
+}
+
+.meal-chip-row--avoid strong {
+  color: #fff1f2;
+  background: rgba(251, 113, 133, 0.24);
+  border: 1px solid rgba(251, 113, 133, 0.32);
+}
+
+.recovery-plan-card.active {
+  border-color: rgba(250, 204, 21, 0.34);
+}
+
+.exercise-option-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.exercise-option-grid article {
+  display: grid;
+  gap: 6px;
+  min-height: 146px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(2, 10, 18, 0.3);
+  border: 1px solid rgba(125, 211, 252, 0.14);
+}
+
+.exercise-option-grid span {
+  color: var(--coach-amber);
+  font-weight: 900;
+}
+
+.exercise-option-grid strong {
+  color: #f8fbff;
+  font-size: 1.1rem;
+}
+
+.exercise-option-grid b {
+  color: var(--coach-lime);
+  font-size: 1.35rem;
+}
+
+.exercise-option-grid small {
+  color: var(--coach-muted);
+  line-height: 1.5;
+}
+
+.macro-gap-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.macro-gap-card {
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+  border-radius: 18px;
+  background: rgba(2, 10, 18, 0.26);
+  border: 1px solid rgba(125, 211, 252, 0.14);
+}
+
+.macro-gap-card small {
+  color: var(--coach-muted);
+}
+
+.post-log-impact-card {
+  border-color: rgba(166, 243, 95, 0.26);
+}
+
+.weekly-review-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.food-timeline-section {
+  border-color: rgba(125, 211, 252, 0.24);
+}
+
+.food-timeline-section .journal-day-summary {
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+}
+
+.food-timeline-section .journal-entry-row {
+  background:
+    linear-gradient(145deg, rgba(10, 28, 42, 0.82), rgba(6, 17, 29, 0.72)),
+    rgba(2, 10, 18, 0.3);
+}
+
+.today-journal-datetime-field {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.today-journal-datetime-field span {
+  color: var(--coach-muted);
+  font-weight: 800;
+  font-size: 0.92rem;
+}
+
+.today-journal-datetime-field input {
+  min-height: 46px;
+  width: 100%;
+  padding: 0 14px;
+  border-radius: 14px;
+  color: var(--coach-text);
+  background: rgba(2, 10, 18, 0.58);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+}
+
+@media (max-width: 1180px) {
+  .coach-hero-main,
+  .coach-control-grid,
+  .coach-section-grid,
+  .coach-section-grid--two {
+    grid-template-columns: 1fr;
+  }
+
+  .nutrition-command-grid,
+  .goal-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .coach-stat-strip,
+  .food-timeline-section .journal-day-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .coach-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .coach-header-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .command-scan-button {
+    width: 100%;
+  }
+
+  .coach-hero-card {
+    border-radius: 24px;
+  }
+
+  .coach-hero-main h1 {
+    font-size: 2.45rem;
+  }
+
+  .coach-progress-ring {
+    width: min(230px, 72vw);
+  }
+
+  .coach-stat-strip,
+  .nutrition-command-grid,
+  .goal-mode-grid,
+  .coach-metric-row,
+  .exercise-option-grid,
+  .weekly-review-stats,
+  .food-timeline-section .journal-day-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .goal-mode-card,
+  .nutrition-command-card {
+    min-height: 0;
+  }
+
+  .nutrition-command-topline,
+  .nutrition-command-values div,
+  .macro-gap-card > div {
+    align-items: flex-start;
+  }
+}

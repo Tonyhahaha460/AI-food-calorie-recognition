@@ -2,6 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchFoodProfiles } from "../api/foodProfilesApi";
 import Layout from "../components/Layout";
+import {
+  CoachHeroCard,
+  DailyMissions,
+  ExerciseRecoveryCard,
+  GoalModeSelector,
+  MacroGapAnalysis,
+  NextMealSuggestion,
+  NutritionTargetGrid,
+  PostLogImpactCard,
+  TrainingCoachCard,
+  WeeklyCoachReview,
+} from "../components/NutritionCommandCenter";
 import { useAuth } from "../context/AuthContext";
 import {
   ACTIVITY_LEVEL_OPTIONS,
@@ -11,12 +23,26 @@ import {
   getActivityOption,
 } from "../utils/bmr";
 import {
+  buildJournalDateTimePayload,
   calculateDailyNutrition,
+  getEntryDateTimeInputValue,
+  getEntryLocalDate,
   listMemberJournalEntries,
   normalizeNutrition,
   removeJournalEntry,
   updateJournalEntry,
 } from "../utils/memberJournal";
+import {
+  buildNutritionTargets,
+  formatAmount,
+  generateExerciseRecoveryPlan,
+  generateModeAwareCoachSummary,
+  generateModeAwareDailyMissions,
+  generateModeAwareMealSuggestion,
+  generateModeAwareTrainingAdvice,
+  generatePostLogImpact,
+  generateWeeklyCoachReview,
+} from "../utils/nutritionCoachHelpers";
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 const dateKey = (value = new Date()) =>
@@ -33,47 +59,8 @@ function monthTitle(value) {
   return `${value.getFullYear()}年${value.getMonth() + 1}月`;
 }
 
-function progressPercent(used, target, cap = true) {
-  const targetValue = Number(target || 0);
-  if (targetValue <= 0) {
-    return 0;
-  }
-  const percent = Math.round((Number(used || 0) / targetValue) * 100);
-  return cap ? Math.min(100, percent) : percent;
-}
-
-function formatAmount(value, unit) {
-  const numeric = Number(value || 0);
-  const rounded = unit === "千卡" ? Math.round(numeric) : Math.round(numeric * 10) / 10;
-  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}${unit}`;
-}
-
-function buildGoalCard({ key, label, target, used, unit, token }) {
-  const safeTarget = Math.max(0, Number(target || 0));
-  const safeUsed = Math.max(0, Number(used || 0));
-  const rawPercent = progressPercent(safeUsed, safeTarget, false);
-  const displayPercent = progressPercent(safeUsed, safeTarget, true);
-  const difference = safeTarget - safeUsed;
-  const isOver = difference < 0;
-  const status = isOver ? "over" : rawPercent >= 85 ? "near" : "normal";
-
-  return {
-    key,
-    label,
-    token,
-    unit,
-    target: safeTarget,
-    used: safeUsed,
-    remaining: Math.abs(difference),
-    remainingLabel: isOver ? "超出" : "剩餘",
-    rawPercent,
-    displayPercent,
-    status,
-  };
-}
-
 function proteinTarget(weightKg, mode) {
-  return Math.round(Number(weightKg || 0) * (mode === "fat_loss" ? 2 : 1.6));
+  return Math.round(Number(weightKg || 0) * (mode === "maintain" ? 1.6 : 2));
 }
 
 function fatTarget(calories) {
@@ -95,19 +82,10 @@ function timeText(value) {
       });
 }
 
-function toDatetimeLocal(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(
-    2,
-    "0"
-  )}T${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
-
 function groupEntries(entries) {
   const map = new Map();
   entries.forEach((entry) => {
-    const key = String(entry.date_key || "").trim();
+    const key = String(getEntryLocalDate(entry) || "").trim();
     if (!key) return;
     const bucket = map.get(key) || [];
     bucket.push(entry);
@@ -117,7 +95,11 @@ function groupEntries(entries) {
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([key, items]) => ({
       key,
-      items: [...items].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || ""))),
+      items: [...items].sort((a, b) =>
+        String(b.local_date_time || b.localDateTime || b.created_at || "").localeCompare(
+          String(a.local_date_time || a.localDateTime || a.created_at || "")
+        )
+      ),
     }));
 }
 
@@ -148,7 +130,7 @@ function buildEditForm(entry) {
   return {
     foodName: entry.food_name || "",
     portionLabel: entry.portion_label || "",
-    createdAt: toDatetimeLocal(entry.created_at),
+    createdAt: getEntryDateTimeInputValue(entry),
     calories: String(nutrition.calories ?? ""),
     protein: String(nutrition.protein ?? ""),
     fat: String(nutrition.fat ?? ""),
@@ -162,6 +144,7 @@ function JournalPage() {
   const [entries, setEntries] = useState([]);
   const [foodProfiles, setFoodProfiles] = useState([]);
   const [goalMode, setGoalMode] = useState("maintain");
+  const [trainingDayType, setTrainingDayType] = useState("strength");
   const [selectedDateKey, setSelectedDateKey] = useState("");
   const [visibleMonth, setVisibleMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [editingId, setEditingId] = useState("");
@@ -252,41 +235,14 @@ function JournalPage() {
   const proteinGoal = proteinTarget(profile.weightKg, goalMode);
   const fatGoal = fatTarget(calorieGoal);
   const carbsGoal = carbTarget(calorieGoal, proteinGoal, fatGoal);
-  const goalCards = useMemo(
-    () => [
-      buildGoalCard({
-        key: "calories",
-        label: "熱量",
-        target: calorieGoal,
-        used: selectedSummary.calories,
-        unit: "千卡",
-        token: "kcal",
+  const nutritionTargets = useMemo(
+    () =>
+      buildNutritionTargets(selectedSummary, {
+        calories: calorieGoal,
+        protein: proteinGoal,
+        fat: fatGoal,
+        carbs: carbsGoal,
       }),
-      buildGoalCard({
-        key: "protein",
-        label: "蛋白質",
-        target: proteinGoal,
-        used: selectedSummary.protein,
-        unit: "克",
-        token: "P",
-      }),
-      buildGoalCard({
-        key: "fat",
-        label: "脂肪",
-        target: fatGoal,
-        used: selectedSummary.fat,
-        unit: "克",
-        token: "F",
-      }),
-      buildGoalCard({
-        key: "carbs",
-        label: "碳水",
-        target: carbsGoal,
-        used: selectedSummary.carbs,
-        unit: "克",
-        token: "C",
-      }),
-    ],
     [
       calorieGoal,
       carbsGoal,
@@ -298,7 +254,40 @@ function JournalPage() {
       selectedSummary.protein,
     ]
   );
-  const calorieGoalCard = goalCards[0];
+  const calorieGoalCard = nutritionTargets.find((target) => target.key === "calories") || nutritionTargets[0];
+  const macroTargets = nutritionTargets.filter((target) => target.key !== "calories");
+  const targetValues = useMemo(
+    () => ({
+      calories: calorieGoal,
+      protein: proteinGoal,
+      fat: fatGoal,
+      carbs: carbsGoal,
+    }),
+    [calorieGoal, carbsGoal, fatGoal, proteinGoal]
+  );
+  const coachSummary = useMemo(
+    () => generateModeAwareCoachSummary(goalMode, selectedSummary, targetValues),
+    [goalMode, selectedSummary, targetValues]
+  );
+  const dailyMissions = useMemo(
+    () => generateModeAwareDailyMissions(goalMode, selectedSummary, targetValues),
+    [goalMode, selectedSummary, targetValues]
+  );
+  const trainingAdvice = useMemo(
+    () => generateModeAwareTrainingAdvice(goalMode, selectedSummary, targetValues),
+    [goalMode, selectedSummary, targetValues]
+  );
+  const mealSuggestion = useMemo(
+    () => generateModeAwareMealSuggestion(goalMode, selectedSummary, targetValues),
+    [goalMode, selectedSummary, targetValues]
+  );
+  const exercisePlan = useMemo(
+    () => generateExerciseRecoveryPlan(goalMode, selectedSummary, targetValues, profile.weightKg),
+    [goalMode, profile.weightKg, selectedSummary, targetValues]
+  );
+  const latestEntry = selectedEntries[0] || null;
+  const postLogImpact = useMemo(() => generatePostLogImpact(latestEntry, goalMode), [latestEntry, goalMode]);
+  const weeklyReview = useMemo(() => generateWeeklyCoachReview(entries, targetValues), [entries, targetValues]);
 
   const calendar = useMemo(
     () => buildCalendar(visibleMonth, counts, selectedDateKey, todayKey),
@@ -340,7 +329,7 @@ function JournalPage() {
     await updateJournalEntry(memberAccount, entryId, {
       food_name: editForm.foodName.trim() || "未命名餐點",
       portion_label: editForm.portionLabel.trim() || "1 份",
-      created_at: editForm.createdAt ? new Date(editForm.createdAt).toISOString() : undefined,
+      ...buildJournalDateTimePayload(editForm.createdAt),
       nutrition: {
         calories: Number(editForm.calories || 0),
         protein: Number(editForm.protein || 0),
@@ -379,15 +368,38 @@ function JournalPage() {
 
   return (
     <Layout>
-      <section className="page-header">
-        <p className="eyebrow">會員日誌</p>
-        <h1>依日期查看餐點與營養</h1>
-        <p className="subtitle">我們會依照你目前選取的日期，統計當天已加入日誌的熱量、蛋白質、脂肪與碳水。</p>
+      <section className="page-header coach-page-header">
+        <div>
+          <p className="eyebrow">AI Nutrition Command Center</p>
+          <h1>今日飲食教練</h1>
+          <p className="subtitle">依照選取日期、目標模式與會員資料，即時計算熱量、剩餘營養素與下一步建議。</p>
+        </div>
+        <div className="coach-header-actions">
+          <span className="coach-mode-pill">
+            {goalMode === "fat_loss" ? "減脂建議" : goalMode === "fitness_daily" ? "健人日常" : "維持體態"}
+          </span>
+          <Link to="/recognition" className="primary-button command-scan-button">
+            掃描下一餐
+          </Link>
+        </div>
       </section>
 
-      <div className="journal-summary-grid">
-        <section className="panel-card journal-summary-card">
-          <span>會員資料</span>
+      <CoachHeroCard
+        dateLabel={dateTitle(selectedDateKey)}
+        memberLabel={memberName || memberAccount}
+        summary={selectedSummary}
+        calorieTarget={calorieGoalCard}
+        coachSummary={coachSummary}
+      />
+
+      <GoalModeSelector goalMode={goalMode} onChange={setGoalMode} />
+
+      <div className="coach-control-grid">
+        <section className="panel-card command-section member-profile-card">
+          <div className="section-heading">
+            <p className="eyebrow">會員資料</p>
+            <h2>代謝計算設定</h2>
+          </div>
           <strong>{memberName || memberAccount}</strong>
           <div className="profile-editor-grid">
             <label>
@@ -450,121 +462,53 @@ function JournalPage() {
           </div>
         </section>
 
-        <section className="panel-card journal-summary-card journal-intake-card">
-          <div className="journal-card-topline">
-            <span>目前日期</span>
-            <strong>{dateTitle(selectedDateKey)}</strong>
+        <section className="panel-card command-section metabolism-card">
+          <div className="section-heading">
+            <p className="eyebrow">BMR / TDEE</p>
+            <h2>今日目標基準</h2>
           </div>
-          <div className="journal-calorie-hero">
-            <span>目前總熱量</span>
-            <strong>{formatAmount(selectedSummary.calories, "千卡")}</strong>
-            <small>
-              目標 {formatAmount(calorieGoal, "千卡")} · {calorieGoalCard.remainingLabel}{" "}
-              {formatAmount(calorieGoalCard.remaining, "千卡")}
-            </small>
-          </div>
-          <div className="journal-dashboard-meta">
+          <div className="coach-metric-row">
             <div>
-              <span>當日紀錄數</span>
-              <strong>{selectedSummary.count}</strong>
+              <span>基礎代謝率</span>
+              <strong>{bmr || "--"} kcal</strong>
             </div>
             <div>
-              <span>蛋白質</span>
-              <strong>{formatAmount(selectedSummary.protein, "克")}</strong>
+              <span>活動量消耗</span>
+              <strong>{tdee || "--"} kcal</strong>
             </div>
             <div>
-              <span>碳水</span>
-              <strong>{formatAmount(selectedSummary.carbs, "克")}</strong>
+              <span>減脂建議</span>
+              <strong>{cutCalories || "--"} kcal</strong>
             </div>
           </div>
-          <Link to="/recognition" className="primary-button journal-cta-button">
-            返回掃描頁
-          </Link>
+          <p className="muted-text">{activity.label}</p>
         </section>
       </div>
 
-      <section className="panel-card">
-        <div className="section-heading">
-          <p className="eyebrow">BMR</p>
-          <h2>基礎代謝與每日消耗</h2>
-        </div>
-        <div className="bmr-grid">
-          <div className="journal-summary-metric">
-            <span>基礎代謝率 BMR</span>
-            <strong>{bmr || "--"} kcal</strong>
-          </div>
-          <div className="journal-summary-metric">
-            <span>活動量總消耗 TDEE</span>
-            <strong>{tdee || "--"} kcal</strong>
-            <small>{activity.label}</small>
-          </div>
-          <div className="journal-summary-metric">
-            <span>減脂建議熱量</span>
-            <strong>{cutCalories || "--"} kcal</strong>
-          </div>
-        </div>
-      </section>
+      <NutritionTargetGrid targets={nutritionTargets} />
 
-      <section className="panel-card">
-        <div className="section-heading">
-          <p className="eyebrow">熱量目標</p>
-          <h2>維持體態 / 減脂建議</h2>
-        </div>
-        <div className="journal-goal-toggle">
-          <button
-            type="button"
-            className={`journal-goal-chip ${goalMode === "maintain" ? "active" : ""}`}
-            onClick={() => setGoalMode("maintain")}
-          >
-            維持體態
-          </button>
-          <button
-            type="button"
-            className={`journal-goal-chip ${goalMode === "fat_loss" ? "active" : ""}`}
-            onClick={() => setGoalMode("fat_loss")}
-          >
-            減脂建議
-          </button>
-        </div>
-        <div className="journal-goal-summary nutrition-goal-grid">
-          {goalCards.map((card) => (
-            <article className={`nutrition-goal-card nutrition-goal-card--${card.status}`} key={card.key}>
-              <div className="nutrition-goal-header">
-                <span className="nutrition-goal-token">{card.token}</span>
-                <div>
-                  <span>今日目標{card.label}</span>
-                  <strong>{card.rawPercent}%</strong>
-                </div>
-              </div>
+      <div className="coach-section-grid">
+        <DailyMissions missions={dailyMissions} />
+        <TrainingCoachCard
+          goalMode={goalMode}
+          trainingDayType={trainingDayType}
+          onTrainingDayChange={setTrainingDayType}
+          advice={trainingAdvice}
+        />
+        <NextMealSuggestion suggestion={mealSuggestion} />
+      </div>
 
-              <div className="nutrition-goal-values">
-                <div>
-                  <span>目標</span>
-                  <strong>{card.target ? formatAmount(card.target, card.unit) : "--"}</strong>
-                </div>
-                <div>
-                  <span>已使用</span>
-                  <strong>{formatAmount(card.used, card.unit)}</strong>
-                </div>
-                <div>
-                  <span>{card.remainingLabel}</span>
-                  <strong>{formatAmount(card.remaining, card.unit)}</strong>
-                </div>
-              </div>
+      <div className="coach-section-grid coach-section-grid--two">
+        <ExerciseRecoveryCard plan={exercisePlan} />
+        <MacroGapAnalysis targets={macroTargets} />
+      </div>
 
-              <div className="goal-progress-track" aria-label={`${card.label}進度 ${card.rawPercent}%`}>
-                <span style={{ width: `${card.displayPercent}%` }} />
-              </div>
-              <small className="goal-progress-caption">
-                {card.rawPercent === 0 ? "尚未使用" : `已達成 ${card.rawPercent}%`}
-              </small>
-            </article>
-          ))}
-        </div>
-        <p className="muted-text">這個區會根據您目前點選的日期，扣掉當天已經加入日誌的用餐點。</p>
-      </section>
+      <div className="coach-section-grid coach-section-grid--two">
+        <PostLogImpactCard impact={postLogImpact} />
+        <WeeklyCoachReview review={weeklyReview} />
+      </div>
 
-      <section className="panel-card">
+      <section className="panel-card food-timeline-section">
         <div className="section-heading">
           <p className="eyebrow">日期切換</p>
           <h2>依日期查看餐點</h2>
@@ -662,7 +606,9 @@ function JournalPage() {
                   const nutrition = normalizeNutrition(entry);
                   return (
                     <article className="journal-entry-row" key={entry.id}>
-                      <div className="journal-entry-time">{timeText(entry.created_at)}</div>
+                      <div className="journal-entry-time">
+                        {timeText(entry.local_date_time || entry.localDateTime || entry.created_at)}
+                      </div>
                       <div className="journal-entry-content">
                         <div className="journal-entry-header">
                           <div>

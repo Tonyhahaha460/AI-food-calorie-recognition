@@ -487,6 +487,17 @@ MODEL_PROVIDER=food_classifier
 
 ### Run locally
 
+Windows quick setup:
+
+```bat
+安裝環境.bat
+啟動前後端.bat
+```
+
+`安裝環境.bat` checks Python and Node.js, creates `.env` files from the examples, creates the backend virtual environment, and installs backend/frontend packages. After it finishes, run `啟動前後端.bat` to start both servers.
+
+Manual setup:
+
 ```bash
 cd backend
 python -m venv .venv

@@ -53,7 +53,9 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-set "NPM_CMD=npm.cmd"
+for /f "delims=" %%I in ('where npm.cmd') do (
+  if not defined NPM_CMD set "NPM_CMD=%%I"
+)
 call "%NPM_CMD%" --version
 
 echo.

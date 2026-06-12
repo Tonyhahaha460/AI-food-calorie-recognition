@@ -10,7 +10,9 @@ set "FRONTEND_DIR=%ROOT_DIR%\frontend"
 set "BACKEND_PYTHON=%BACKEND_DIR%\.venv\Scripts\python.exe"
 set "BACKEND_REQUIREMENTS=%BACKEND_DIR%\requirements.txt"
 set "WORK_TMP=%ROOT_DIR%\tmp"
-set "PYTHON_BOOTSTRAP="
+set "VENV_DIR=%BACKEND_DIR%\.venv"
+set "PYTHON_BOOTSTRAP_CMD="
+set "PYTHON_BOOTSTRAP_ARGS="
 set "NPM_CMD="
 
 if not exist "%BACKEND_DIR%" (
@@ -44,44 +46,49 @@ where py.exe >nul 2>nul
 if not errorlevel 1 (
   py -3.13 -c "import sys" >nul 2>nul
   if not errorlevel 1 (
-    set "PYTHON_BOOTSTRAP=py -3.13"
+    set "PYTHON_BOOTSTRAP_CMD=py.exe"
+    set "PYTHON_BOOTSTRAP_ARGS=-3.13"
   )
 )
 
-if not defined PYTHON_BOOTSTRAP (
+if not defined PYTHON_BOOTSTRAP_CMD (
   where py.exe >nul 2>nul
   if not errorlevel 1 (
     py -3 -c "import sys" >nul 2>nul
     if not errorlevel 1 (
-      set "PYTHON_BOOTSTRAP=py -3"
+      set "PYTHON_BOOTSTRAP_CMD=py.exe"
+      set "PYTHON_BOOTSTRAP_ARGS=-3"
     )
   )
 )
 
-if not defined PYTHON_BOOTSTRAP (
+if not defined PYTHON_BOOTSTRAP_CMD (
   where python.exe >nul 2>nul
   if not errorlevel 1 (
     python.exe -c "import sys" >nul 2>nul
     if not errorlevel 1 (
-      set "PYTHON_BOOTSTRAP=python.exe"
+      set "PYTHON_BOOTSTRAP_CMD=python.exe"
+      set "PYTHON_BOOTSTRAP_ARGS="
     )
   )
 )
 
-if not defined PYTHON_BOOTSTRAP (
+if not defined PYTHON_BOOTSTRAP_CMD (
   if exist "%LOCALAPPDATA%\Programs\Python\Python313\python.exe" (
     "%LOCALAPPDATA%\Programs\Python\Python313\python.exe" -c "import sys" >nul 2>nul
     if not errorlevel 1 (
-      set "PYTHON_BOOTSTRAP=%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
+      set "PYTHON_BOOTSTRAP_CMD=%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
+      set "PYTHON_BOOTSTRAP_ARGS="
     )
   )
 )
 
-if not defined PYTHON_BOOTSTRAP (
+if not defined PYTHON_BOOTSTRAP_CMD (
   if exist "%ProgramFiles%\Python313\python.exe" (
     "%ProgramFiles%\Python313\python.exe" -c "import sys" >nul 2>nul
     if not errorlevel 1 (
-      set "PYTHON_BOOTSTRAP=%ProgramFiles%\Python313\python.exe"
+      set "PYTHON_BOOTSTRAP_CMD=%ProgramFiles%\Python313\python.exe"
+      set "PYTHON_BOOTSTRAP_ARGS="
     )
   )
 )
@@ -90,12 +97,13 @@ if exist "%BACKEND_PYTHON%" (
   "%BACKEND_PYTHON%" -c "import sys" >nul 2>nul
   if errorlevel 1 (
     echo [WARN] Existing backend virtual environment is broken.
-    if defined PYTHON_BOOTSTRAP (
+    if defined PYTHON_BOOTSTRAP_CMD (
       echo [INFO] Recreating backend virtual environment...
-      rmdir /s /q "%BACKEND_DIR%\.venv"
+      rmdir /s /q "%VENV_DIR%"
     ) else (
       echo [ERROR] Python not found, and the existing backend virtual environment cannot run.
-      echo [ERROR] Please install Python 3.13, then run this file again.
+      echo [ERROR] Please install Python 3.13 from https://www.python.org/downloads/
+      echo [ERROR] Make sure "Add python.exe to PATH" is checked, then run this file again.
       pause
       exit /b 1
     )
@@ -103,14 +111,16 @@ if exist "%BACKEND_PYTHON%" (
 )
 
 if not exist "%BACKEND_PYTHON%" (
-  if not defined PYTHON_BOOTSTRAP (
+  if not defined PYTHON_BOOTSTRAP_CMD (
     echo [ERROR] Python not found. Please install Python 3.13 first.
+    echo [ERROR] Download: https://www.python.org/downloads/
+    echo [ERROR] Make sure "Add python.exe to PATH" is checked.
     pause
     exit /b 1
   )
   echo [INFO] Creating backend virtual environment...
   pushd "%BACKEND_DIR%"
-  call %PYTHON_BOOTSTRAP% -m venv .venv
+  call "%PYTHON_BOOTSTRAP_CMD%" %PYTHON_BOOTSTRAP_ARGS% -m venv .venv
   set "CREATE_VENV_EXIT=%ERRORLEVEL%"
   popd
   if not "!CREATE_VENV_EXIT!"=="0" (
@@ -189,10 +199,10 @@ if not exist "%FRONTEND_DIR%\node_modules" (
 )
 
 echo Starting backend...
-start "AI Food Journal Backend" /D "%BACKEND_DIR%" cmd /k ""%BACKEND_PYTHON%" "run.py""
+start "AI Food Journal Backend" /D "%BACKEND_DIR%" cmd /k "call ""%BACKEND_PYTHON%"" ""run.py"""
 
 echo Starting frontend...
-start "AI Food Journal Frontend" /D "%FRONTEND_DIR%" cmd /k "%NPM_CMD% run dev"
+start "AI Food Journal Frontend" /D "%FRONTEND_DIR%" cmd /k "call ""%NPM_CMD%"" run dev"
 
 echo.
 echo Backend:  http://localhost:5000
